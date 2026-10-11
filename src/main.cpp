@@ -1,6 +1,6 @@
 
 #include "bitboard.h"
-#include "movegen.h"
+#include "movelist.h"
 #include "position.h"
 #include "search.h"
 #include "uci.h"

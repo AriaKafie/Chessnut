@@ -9,8 +9,7 @@
 
 #include "debug.h"
 #include "evaluation.h"
-#include "movegen.h"
-#include "moveordering.h"
+#include "movelist.h"
 #include "position.h"
 #include "transpositiontable.h"
 #include "uci.h"
@@ -125,7 +124,7 @@ int search(Position& pos, int alpha, int beta, int depth, bool null_ok, SearchIn
         int eval = -search<NONPV, !SideToMove>(pos, -beta, -beta + 1, depth - R, false, si + 1);
         pos.undo_null_move();
 
-        if (status.search_cancelled) [[unlikely]]
+        if (status.search_cancelled)
             return 0;
 
         if (eval >= beta)

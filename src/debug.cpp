@@ -14,8 +14,7 @@
 #include <thread>
 
 #include "evaluation.h"
-#include "movegen.h"
-#include "moveordering.h"
+#include "movelist.h"
 #include "position.h"
 #include "transpositiontable.h"
 #include "search.h"
@@ -173,7 +172,7 @@ std::string rep_table_to_string() {
 }*/
 
 static void go() {
-    std::cout << "position_class" << std::endl;
+    std::cout << "movelist cleanup" << std::endl;
 
     /*Position pos;
     SearchInfo si = {};

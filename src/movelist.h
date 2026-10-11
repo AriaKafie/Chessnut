@@ -6,6 +6,8 @@
 #include "search.h"
 #include "types.h"
 
+namespace MoveGen { void init(); };
+
 typedef int Stage;
 enum Stages {
     TT, GENERATE, GENERATED

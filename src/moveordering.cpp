@@ -1,7 +1,4 @@
 
-#ifndef MOVEORDERING_H
-#define MOVEORDERING_H
-
 #include <limits.h>
 
 #include "evaluation.h"
@@ -141,4 +138,8 @@ void MoveList<Us, Them>::sort() {
     quicksort(0, size() - 1);
 }
 
-#endif
+template void MoveList<WHITE>::sort();
+template void MoveList<BLACK>::sort();
+
+template void CaptureList<WHITE>::sort();
+template void CaptureList<BLACK>::sort();

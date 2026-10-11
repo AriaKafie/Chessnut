@@ -1,12 +1,12 @@
 
-HEADERS = bitboard.h debug.h evaluation.h movegen.h movelist.h moveordering.h position.h search.h transpositiontable.h types.h uci.h
+HEADERS = bitboard.h debug.h evaluation.h movelist.h position.h search.h transpositiontable.h types.h uci.h
 
 FLAGS = -fpermissive -std=c++17 -march=native -w -O3 -c
 
-OBJS = bitboard.o debug.o main.o position.o search.o transpositiontable.o uci.o
+OBJS = bitboard.o debug.o main.o movegen.o moveordering.o position.o search.o transpositiontable.o uci.o
 
-chessnut: $(OBJS)
-	g++ $(OBJS) -o chessnut
+Chessnut: $(OBJS)
+	g++ $(OBJS) -o Chessnut
 
 bitboard.o: bitboard.cpp $(HEADERS)
 	g++ $(FLAGS) bitboard.cpp
@@ -16,6 +16,12 @@ debug.o: debug.cpp $(HEADERS)
 
 main.o: main.cpp $(HEADERS)
 	g++ $(FLAGS) main.cpp
+
+movegen.o: movegen.cpp $(HEADERS)
+	g++ $(FLAGS) movegen.cpp
+
+moveordering.o: moveordering.cpp $(HEADERS)
+	g++ $(FLAGS) moveordering.cpp
 
 position.o: position.cpp $(HEADERS)
 	g++ $(FLAGS) position.cpp
@@ -30,7 +36,7 @@ uci.o: uci.cpp $(HEADERS)
 	g++ $(FLAGS) uci.cpp
 
 clean:
-	rm -rf *.o *~ chessnut
+	rm -rf *.o *~ Chessnut
 
 debug:
 	g++ -fpermissive -std=c++17 -march=native -w -g -odebug *.cpp

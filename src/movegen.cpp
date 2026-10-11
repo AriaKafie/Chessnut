@@ -1,22 +1,11 @@
 
-#ifndef MOVEGEN_H
-#define MOVEGEN_H
-
 #include "bitboard.h"
 #include "movelist.h"
 #include "position.h"
 
-inline uint64_t castle_lut[COLOR_NB][1 << 4][1 << 6];
+uint64_t castle_lut[COLOR_NB][1 << 4][1 << 6];
 
-namespace MoveGen { void init(); };
-/*
-+---+---+---+---+---+---+---+---+
-|   |qo |qoa|qoa|qka|koa|koa|   | >> 1,
-+---+---+---+---+---+---+---+---+
-|   |   |qo |qoa|qoa|qka|koa|koa|
-+---+---+---+---+---+---+---+---+
-*/
-inline void MoveGen::init() {
+void MoveGen::init() {
 
     for (Color c : { WHITE, BLACK }) {
 
@@ -45,7 +34,7 @@ inline void MoveGen::init() {
 }
 
 template<MoveType Type, Direction D>
-ForceInline EMove* make_pawn_moves(EMove *list, Bitboard attacks) {
+EMove* make_pawn_moves(EMove *list, Bitboard attacks) {
 
     for (;attacks; clear_lsb(attacks)) {
 
@@ -65,7 +54,7 @@ ForceInline EMove* make_pawn_moves(EMove *list, Bitboard attacks) {
     return list;
 }
 
-ForceInline inline EMove* make_moves(EMove *list, Square from, Bitboard to) {
+EMove* make_moves(EMove *list, Square from, Bitboard to) {
 
     for (;to; clear_lsb(to))
         *list++ = make_move(from, bsf(to));
@@ -194,6 +183,9 @@ void MoveList<Us, Them>::generate()
     last += popcount(*u & 0x100000001000);
 }
 
+template void MoveList<WHITE>::generate();
+template void MoveList<BLACK>::generate();
+
 template<Color Us, Color Them>
 CaptureList<Us, Them>::CaptureList(const Position& p) : pos(p)
 {
@@ -213,15 +205,13 @@ CaptureList<Us, Them>::CaptureList(const Position& p) : pos(p)
     Bitboard opponent_rook_queen   = pos.bb(OpponentQueen) | pos.bb(OpponentRook);
     Bitboard opponent_bishop_queen = pos.bb(OpponentQueen) | pos.bb(OpponentBishop);
     Square   ksq                   = bsf(pos.bb(FriendlyKing));
-    Bitboard occupied              = pos.occupied_bb() ^ square_bb(ksq); // ?
+    Bitboard occupied              = pos.occupied_bb();
 
     seen_by_enemy = pawn_attacks<Them>(pos.bb(OpponentPawn)) | king_attacks(bsf(pos.bb(OpponentKing)));
 
     for (Bitboard b = pos.bb(OpponentKnight); b; clear_lsb(b)) seen_by_enemy |= knight_attacks(bsf(b));
-    for (Bitboard b = opponent_bishop_queen;  b; clear_lsb(b)) seen_by_enemy |= bishop_attacks(bsf(b), occupied);
-    for (Bitboard b = opponent_rook_queen;    b; clear_lsb(b)) seen_by_enemy |= rook_attacks  (bsf(b), occupied);
-
-    toggle_square(occupied, ksq); // ?
+    for (Bitboard b = opponent_bishop_queen;  b; clear_lsb(b)) seen_by_enemy |= bishop_attacks(bsf(b), occupied ^ square_bb(ksq));
+    for (Bitboard b = opponent_rook_queen;    b; clear_lsb(b)) seen_by_enemy |= rook_attacks  (bsf(b), occupied ^ square_bb(ksq));
 
     Bitboard checkmask = knight_attacks(ksq) & pos.bb(OpponentKnight) | pawn_attacks<Us>(ksq) & pos.bb(OpponentPawn);
 
@@ -285,4 +275,5 @@ CaptureList<Us, Them>::CaptureList(const Position& p) : pos(p)
     last = make_moves(last, ksq, king_attacks(ksq) & pos.bb(Them) & ~seen_by_enemy);
 }
 
-#endif
+template CaptureList<WHITE>::CaptureList(const Position&);
+template CaptureList<BLACK>::CaptureList(const Position&);

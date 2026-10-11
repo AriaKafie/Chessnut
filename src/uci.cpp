@@ -5,7 +5,7 @@
 #include <sstream>
 
 #include "debug.h"
-#include "movegen.h"
+#include "movelist.h"
 #include "position.h"
 #include "search.h"
 #include "transpositiontable.h"

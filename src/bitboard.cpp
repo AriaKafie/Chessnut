@@ -166,10 +166,9 @@ void Bitboards::init()
             }
         }
 #endif
-        for (int i = 0; i < 4; i++)
-        {
-            for (int j = 0; j < 1 << popcount(masks[i]); j++)
-            {
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 1 << popcount(masks[i]); j++) {
+
                 Bitboard spans = 0;
 
                 for (Bitboard enemy_pawn = pdep(masks[i], j); enemy_pawn; clear_lsb(enemy_pawn)) {
