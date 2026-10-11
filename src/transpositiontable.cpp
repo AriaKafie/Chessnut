@@ -3,51 +3,23 @@
 #include "position.h"
 
 TTEntry transposition_table[TT_SIZE];
-RTEntry repetition_table[RT_SIZE];
 
-bool RepetitionTable::draw() {
-    RTEntry *r = &repetition_table[Position::key() & (RT_SIZE - 1)];
-    return r->key == Position::key() && r->occurrences > 1;
-}
+int TranspositionTable::lookup(uint64_t key,
+                               int      depth,
+                               int      alpha,
+                               int      beta,
+                               int      ply_from_root) {
 
-void RepetitionTable::push()
-{
-    RTEntry *r = &repetition_table[Position::key() & (RT_SIZE - 1)];
+    TTEntry *entry = &transposition_table[key & (TT_SIZE - 1)];
 
-    if (r->key == Position::key())
-    {
-        r->occurrences++;
-    }
-    else if (r->occurrences == 0)
-    {
-        r->key = Position::key();
-        r->occurrences = 1;
-    }
-}
+    if (entry->key == key && entry->depth >= depth) {
 
-void RepetitionTable::pop() {
-    RTEntry *r = &repetition_table[Position::key() & (RT_SIZE - 1)];
-    if (r->key == Position::key())
-        r->occurrences--;
-}
-
-void RepetitionTable::clear() {
-    memset(repetition_table, 0, RT_SIZE * sizeof(RTEntry));
-}
-
-int TranspositionTable::lookup(int depth, int alpha, int beta, int ply_from_root)
-{
-    TTEntry *entry = &transposition_table[Position::key() & (TT_SIZE - 1)];
-
-    if (entry->key == Position::key() && entry->depth >= depth)
-    {
         int eval = entry->eval;
 
-        if (is_win(eval)) {
+        if (is_win(eval))
             eval -= ply_from_root;
-        } else if (is_loss(eval)) {
+        else if (is_loss(eval))
             eval += ply_from_root;
-        }
 
         if (entry->flag == EXACT)
             return eval;
@@ -62,26 +34,30 @@ int TranspositionTable::lookup(int depth, int alpha, int beta, int ply_from_root
     return NO_EVAL;
 }
 
-void TranspositionTable::record(uint8_t depth, BoundType flag, int eval, Move best_move, int ply_from_root)
-{
-    if (is_win(eval)) {
+void TranspositionTable::record(uint64_t  key,
+                                uint8_t   depth,
+                                BoundType flag,
+                                int       eval,
+                                Move      best_move,
+                                int       ply_from_root) {
+
+    if (is_win(eval))
         eval += ply_from_root;
-    } else if (is_loss(eval)) {
+    else if (is_loss(eval))
         eval -= ply_from_root;
-    }
 
-    TTEntry *e = &transposition_table[Position::key() & (TT_SIZE - 1)];
+    TTEntry *e = &transposition_table[key & (TT_SIZE - 1)];
 
-    e->key       = Position::key();
+    e->key       = key;
     e->depth     = depth;
     e->flag      = flag;
     e->eval      = eval;
     e->best_move = best_move;
 }
 
-Move TranspositionTable::lookup_move() {
-    TTEntry *e = &transposition_table[Position::key() & (TT_SIZE - 1)];
-    return e->key == Position::key() ? e->best_move : NO_MOVE;
+Move TranspositionTable::lookup_move(uint64_t key) {
+    TTEntry *e = &transposition_table[key & (TT_SIZE - 1)];
+    return e->key == key ? e->best_move : NO_MOVE;
 }
 
 void TranspositionTable::clear() {

@@ -75,14 +75,15 @@ inline void eval_init() {
         }
     };
 
-    for (Color c : { WHITE, BLACK })
-        for (PieceType pt : { NO_PIECE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING })
-        {
+    for (Color c : { WHITE, BLACK }) {
+        for (PieceType pt : { NO_PIECE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING }) {
+
             Square sq = A8;
 
             for (int i : psq_base[pt])
                 psq[c][pt][relative_square(sq--, c)] = i;
         }
+    }
 }
 
 inline int piece_weight(PieceType pt) {
@@ -115,24 +116,24 @@ int psq_score(PieceType pt, Square sq) {
 }
 
 template<Color Us>
-int material_count() {
+int material_count(const Position& pos) {
     return
-        100 * (popcount(bitboard<make_piece(Us, PAWN  )>()) - popcount(bitboard<make_piece(!Us, PAWN  )>())) +
-        300 * (popcount(bitboard<make_piece(Us, KNIGHT)>()) - popcount(bitboard<make_piece(!Us, KNIGHT)>())) +
-        300 * (popcount(bitboard<make_piece(Us, BISHOP)>()) - popcount(bitboard<make_piece(!Us, BISHOP)>())) +
-        500 * (popcount(bitboard<make_piece(Us, ROOK  )>()) - popcount(bitboard<make_piece(!Us, ROOK  )>())) +
-        900 * (popcount(bitboard<make_piece(Us, QUEEN )>()) - popcount(bitboard<make_piece(!Us, QUEEN )>()));
+        100 * (popcount(pos.bb(make_piece(Us, PAWN  ))) - popcount(pos.bb(make_piece(!Us, PAWN  )))) +
+        300 * (popcount(pos.bb(make_piece(Us, KNIGHT))) - popcount(pos.bb(make_piece(!Us, KNIGHT)))) +
+        300 * (popcount(pos.bb(make_piece(Us, BISHOP))) - popcount(pos.bb(make_piece(!Us, BISHOP)))) +
+        500 * (popcount(pos.bb(make_piece(Us, ROOK  ))) - popcount(pos.bb(make_piece(!Us, ROOK  )))) +
+        900 * (popcount(pos.bb(make_piece(Us, QUEEN ))) - popcount(pos.bb(make_piece(!Us, QUEEN ))));
 }
 
 template<Color Us, Color Them = !Us>
-int midgame()
+int midgame(const Position& pos)
 {
-    int score = material_count<Us>();
+    int score = material_count<Us>(pos);
 
-    Bitboard friendly_pawn = bitboard<make_piece(Us,   PAWN)>();
-    Bitboard opponent_pawn = bitboard<make_piece(Them, PAWN)>();
-    Bitboard friendly_king = bitboard<make_piece(Us,   KING)>();
-    Bitboard opponent_king = bitboard<make_piece(Them, KING)>();
+    Bitboard friendly_pawn = pos.bb(make_piece(Us,   PAWN));
+    Bitboard opponent_pawn = pos.bb(make_piece(Them, PAWN));
+    Bitboard friendly_king = pos.bb(make_piece(Us,   KING));
+    Bitboard opponent_king = pos.bb(make_piece(Them, KING));
 
     score += king_safety<Us  >(bsf(friendly_king), friendly_pawn)
            - king_safety<Them>(bsf(opponent_king), opponent_pawn);
@@ -144,10 +145,10 @@ int midgame()
 
     for (PieceType pt : { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING })
     {
-        for (Bitboard b = bitboards[make_piece(Us, pt)]; b; clear_lsb(b))
+        for (Bitboard b = pos.bb(make_piece(Us, pt)); b; clear_lsb(b))
             score += psq_score<Us>(pt, bsf(b));
 
-        for (Bitboard b = bitboards[make_piece(Them, pt)]; b; clear_lsb(b))
+        for (Bitboard b = pos.bb(make_piece(Them, pt)); b; clear_lsb(b))
             score -= psq_score<Them>(pt, bsf(b));
     }
 
@@ -161,12 +162,12 @@ int midgame()
 }
 
 template<Color Us, Color Them = !Us>
-int endgame()
+int endgame(const Position& pos)
 {
-    int score = material_count<Us>();
+    int score = material_count<Us>(pos);
 
-    Square friendly_ksq = bsf(bitboard<make_piece(Us,   KING)>());
-    Square opponent_ksq = bsf(bitboard<make_piece(Them, KING)>());
+    Square friendly_ksq = bsf(pos.bb(make_piece(Us,   KING)));
+    Square opponent_ksq = bsf(pos.bb(make_piece(Them, KING)));
 
     score += psq_score<Us  >(0, friendly_ksq);
     score -= psq_score<Them>(0, opponent_ksq);
@@ -178,8 +179,8 @@ int endgame()
     constexpr Bitboard Rank6 = relative_rank(Us, RANK_6);
     constexpr Bitboard Rank7 = relative_rank(Us, RANK_7);
     
-    Bitboard friendly_pawn = bitboard<make_piece(Us,   PAWN)>();
-    Bitboard opponent_pawn = bitboard<make_piece(Them, PAWN)>();
+    Bitboard friendly_pawn = pos.bb(make_piece(Us,   PAWN));
+    Bitboard opponent_pawn = pos.bb(make_piece(Them, PAWN));
 
     score += 10 * popcount(friendly_pawn & Rank4);
     score += 20 * popcount(friendly_pawn & Rank5);
@@ -204,12 +205,12 @@ int endgame()
 }
 
 template<Color Us, Color Them = !Us>
-int mopup()
-{
-    int score = material_count<Us>();
+int mopup(const Position& pos) {
 
-    Square friendly_ksq = bsf(bitboard<make_piece(Us,   KING)>());
-    Square opponent_ksq = bsf(bitboard<make_piece(Them, KING)>());
+    int score = material_count<Us>(pos);
+
+    Square friendly_ksq = bsf(pos.bb(make_piece(Us,   KING)));
+    Square opponent_ksq = bsf(pos.bb(make_piece(Them, KING)));
 
     return score > 0
         ? score + 10 * distance_from_center(opponent_ksq) + 4 * (14 - square_distance(friendly_ksq, opponent_ksq))
@@ -217,9 +218,12 @@ int mopup()
 }
 
 template<Color Perspective>
-int static_eval() {
-    return Position::midgame() ? midgame<Perspective>()
-         : Position::endgame() ? endgame<Perspective>() : mopup<Perspective>();
+int static_eval(const Position& pos) {
+    return pos.midgame()
+        ? midgame<Perspective>(pos)
+        : pos.endgame()
+            ? endgame<Perspective>(pos)
+            : mopup<Perspective>(pos);
 }
 
 #endif

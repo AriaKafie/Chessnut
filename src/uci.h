@@ -4,12 +4,13 @@
 
 #include <string>
 
+#include "position.h"
 #include "types.h"
 
 constexpr std::string_view f2c = "hgfedcba";
 constexpr std::string_view r2c = "12345678";
 
-Move uci_to_move(const std::string& uci);
+Move uci_to_move(const Position& pos, const std::string& uci);
 
 namespace UCI { void loop(); }
 

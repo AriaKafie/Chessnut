@@ -21,7 +21,7 @@ enum BoundType : uint8_t { EXACT, UPPER_BOUND, LOWER_BOUND };
 */
 
 const int TT_SIZE = 1 << 23;
-const int RT_SIZE = 1 << 10; // 16 KB
+
 
 typedef struct {
     uint64_t  key;
@@ -31,22 +31,10 @@ typedef struct {
     BoundType flag;
 } TTEntry;
 
-typedef struct {
-    uint64_t key;
-    int      occurrences;
-} RTEntry;
-
 namespace TranspositionTable {
-    int lookup(int depth, int alpha, int beta, int ply_from_root);
-    void record(uint8_t depth, BoundType flag, int eval, Move best_move, int ply_from_root);
-    Move lookup_move();
-    void clear();
-}
-
-namespace RepetitionTable {
-    bool draw();
-    void push();
-    void pop();
+    int lookup(uint64_t key, int depth, int alpha, int beta, int ply_from_root);
+    void record(uint64_t key, uint8_t depth, BoundType flag, int eval, Move best_move, int ply_from_root);
+    Move lookup_move(uint64_t key);
     void clear();
 }
 

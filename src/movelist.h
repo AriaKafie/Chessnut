@@ -2,6 +2,7 @@
 #ifndef MOVELIST_H
 #define MOVELIST_H
 
+#include "position.h"
 #include "search.h"
 #include "types.h"
 
@@ -17,44 +18,13 @@ template<Color Us, Color Them = !Us>
 class MoveList {
 
 public:
-    MoveList() {
-        generate();
-    }
+    MoveList() = delete;
+    MoveList(const Position& p);
+    MoveList(const Position& p,
+             Move            ttm,
+             SearchInfo*     si);
 
-    MoveList(Move tt, SearchInfo *si) : ttmove(tt), search_info(si) {
-        if (ttmove) {
-            *last++ = ttmove;
-            stage = TT;
-        } else {
-            generate();
-            *last = NULLMOVE;
-            sort();
-            stage = GENERATED;
-        }
-    }
-
-    Move next_move() {
-        
-        switch (stage) {
-            
-        case TT:
-            stage++;
-            return *cur++;
-
-        case GENERATE:
-            stage++;
-            last = moves;
-            generate();
-            *last = NULLMOVE;
-            sort();
-            return *cur++;
-
-        case GENERATED:
-        default:
-            return *cur++;
-        }
-    }
-
+    Move   next_move();
     EMove* begin()      { return moves; }
     EMove* end()        { return last; }
     size_t size() const { return last - moves; }
@@ -65,20 +35,69 @@ private:
     void quicksort(int low, int high);
     int  partition(int low, int high);
     
-    EMove       moves[MAX_MOVES];
-    EMove*      last = moves;
-    EMove*      cur = moves;
-    SearchInfo* search_info;
-    Bitboard    seen_by_enemy;
-    Stage       stage;
-    Move        ttmove;
+    EMove           moves[MAX_MOVES];
+    EMove*          last = moves;
+    EMove*          cur = moves;
+    SearchInfo*     search_info;
+    const Position& pos;
+    Bitboard        seen_by_enemy;
+    Stage           stage;
+    Move            ttmove;
 };
+
+template<Color Us, Color Them>
+MoveList<Us, Them>::MoveList(const Position& p) : pos(p) {
+    generate();
+}
+
+template<Color Us, Color Them>
+MoveList<Us, Them>::MoveList(const Position& p,
+                             Move            ttm,
+                             SearchInfo*     si) :
+    pos(p),
+    ttmove(ttm),
+    search_info(si) {
+
+    if (ttmove) {
+        *last++ = ttmove;
+        stage = TT;
+    } else {
+        generate();
+        *last = NULLMOVE;
+        sort();
+        stage = GENERATED;
+    }
+}
+
+template<Color Us, Color Them>
+Move MoveList<Us, Them>::next_move() {
+
+    switch (stage) {
+
+    case TT:
+        stage++;
+        return *cur++;
+
+    case GENERATE:
+        stage++;
+        last = moves;
+        generate();
+        *last = NULLMOVE;
+        sort();
+        return *cur++;
+
+    case GENERATED:
+    default:
+        return *cur++;
+    }
+}
 
 template<Color Us, Color Them = !Us>
 class CaptureList {
 
 public:
-    CaptureList();
+    CaptureList() = delete;
+    CaptureList(const Position& p);
 
     EMove* begin()      { return moves; }
     EMove* end()        { return last; }
@@ -86,11 +105,11 @@ public:
     void   sort();
 
 private:
-    void   insertion_sort();
+    void insertion_sort();
 
-    EMove    moves[MAX_CAPTURES], *last = moves;
-    Bitboard seen_by_enemy;
-
+    EMove           moves[MAX_CAPTURES], *last = moves;
+    const Position& pos;
+    Bitboard        seen_by_enemy;
 };
 
 #endif

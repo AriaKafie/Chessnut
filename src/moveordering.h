@@ -22,10 +22,10 @@ constexpr Score MAX_SCORE          = UINT16_MAX;
 constexpr Score SEEN_BY_PAWN_MALUS = 50;
 
 template<Color Us, Color Them>
-void CaptureList<Us, Them>::insertion_sort()
-{
-    for (EMove *p = moves + 1; p < last; p++)
-    {
+void CaptureList<Us, Them>::insertion_sort() {
+
+    for (EMove *p = moves + 1; p < last; p++) {
+
         EMove tmp = *p, *q;
 
         for (q = p - 1; q >= moves && score_of(*q) < score_of(tmp); q--)
@@ -38,7 +38,7 @@ void CaptureList<Us, Them>::insertion_sort()
 template<Color Us, Color Them>
 void CaptureList<Us, Them>::sort()
 {
-    Bitboard seen_by_pawn = pawn_attacks<Them>(bitboard<make_piece(Them, PAWN)>());
+    Bitboard seen_by_pawn = pawn_attacks<Them>(pos.bb(make_piece(Them, PAWN)));
 
     for (EMove& m : *this)
     {  
@@ -46,8 +46,8 @@ void CaptureList<Us, Them>::sort()
 
         Square    from     = from_sq(m);
         Square    to       = to_sq(m);
-        PieceType pt       = piece_type_on(from);
-        PieceType captured = piece_type_on(to);
+        PieceType pt       = pos.piece_type_on(from);
+        PieceType captured = pos.piece_type_on(to);
 
         if (square_bb(to) & seen_by_pawn)
             score -= 500;
@@ -91,7 +91,7 @@ void MoveList<Us, Them>::quicksort(int low, int high) {
 template<Color Us, Color Them>
 void MoveList<Us, Them>::sort() {
 
-    Bitboard seen_by_pawn = pawn_attacks<Them>(bitboard<make_piece(Them, PAWN)>());
+    Bitboard seen_by_pawn = pawn_attacks<Them>(pos.bb(make_piece(Them, PAWN)));
 
     for (EMove& m : *this) {
 
@@ -104,8 +104,8 @@ void MoveList<Us, Them>::sort() {
     
         Square    from     = from_sq(m);
         Square    to       = to_sq(m);
-        PieceType pt       = piece_type_on(from);
-        PieceType captured = piece_type_on(to);
+        PieceType pt       = pos.piece_type_on(from);
+        PieceType captured = pos.piece_type_on(to);
 
         if (captured)
         {
@@ -124,7 +124,7 @@ void MoveList<Us, Them>::sort() {
             else
                 score = BAD_QUIET_BASE;
 
-            score += Position::endgame() && pt == KING
+            score += pos.endgame() && pt == KING
                 ? (psq_score<Us>(0,  to) - psq_score<Us>(0,  from)) / 2 //(end_king_squares[to] - end_king_squares[from]) / 2
                 : (psq_score<Us>(pt, to) - psq_score<Us>(pt, from)) / 2;
         }

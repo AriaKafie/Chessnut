@@ -6,11 +6,16 @@
 #include <string>
 #include <vector>
 
+#include "position.h"
 #include "types.h",
 
-Move *get_moves(Move *list);
+Move *get_moves(const Position& pos, Move *list);
 
 namespace Debug {
+
+std::string pv(Position& pos);
+void go();
+void perft(Position pos, std::istringstream& args);
 
 // 6rk/7p/Q2R1p2/1p2n3/4b3/1P4NP/P1P2PPK/2q5 b - - 0 1
 // 8/3KP3/8/8/8/8/6k1/7q b - - 0 1
@@ -214,11 +219,6 @@ inline std::vector<std::string> fens =
     "r1bq1rk1/p1pn1pp1/1p2p2p/3n4/3P4/P1B1PN2/1PQ2PPP/R3KB1R w KQ - 0 11",
     "r1bq1rk1/1p2npbp/2np2p1/p1p1p3/Q1P5/P1NPP1P1/1P2NPBP/R1B2RK1 b - - 3 10"
 };
-
-std::string pv();
-void go();
-void perft(std::istringstream& args);
-
 } // namespace Debug
 
 #endif

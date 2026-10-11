@@ -10,13 +10,12 @@
 #include "search.h"
 #include "transpositiontable.h"
 
-void position(std::istringstream& is)
-{
+void position(Position& pos, std::istringstream& is) {
+
     std::string fen, token;
     is >> token;
 
-    if (token == "startpos")
-    {
+    if (token == "startpos") {
         fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
         is >> token;
     }
@@ -24,45 +23,44 @@ void position(std::istringstream& is)
     else if (token == "fen")
         for (;is >> token && token != "moves"; fen += token + " ");
 
-    Position::set(fen);
+    pos.set(fen);
     
-    for (Move m; is >> token && (m = uci_to_move(token)); Position::commit_move(m));
+    for (Move m; is >> token && (m = uci_to_move(pos, token)); pos.commit_move(m));
 }
 
-void go(std::istringstream& is)
-{
-    if ((is >> std::ws).eof()) { Search::go(); return; }
+void go(const Position& pos, std::istringstream& is) {
+
+    if ((is >> std::ws).eof()) { Search::go(pos); return; }
 
     std::string token;
     is       >> token;
 
     if (int movetime; token == "movetime" && is >> movetime)
-        Search::go(movetime);
+        Search::go(pos, movetime);
 
     else if (int depth; token == "nodes" && is >> depth)
         Search::count_nodes(depth);
 
-    else
-    {
+    else {
+
         is.str(is.str()), is.clear();
 
         int wtime = 100, winc = 0, btime = 100, binc = 0;
 
-        for (std::string token; is >> token;)
-        {
+        for (std::string token; is >> token;) {
             if (token == "wtime") is >> wtime;
             if (token == "winc")  is >> winc;
             if (token == "btime") is >> btime;
             if (token == "binc")  is >> binc;
         }
 
-        Search::go(Position::white_to_move() ? (wtime + winc) / 15 : (btime + binc) / 15);
+        Search::go(pos, pos.white_to_move() ? (wtime + winc) / 15 : (btime + binc) / 15);
     }
 }
 
 void UCI::loop()
 {
-    Position::set("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
+    Position pos(STARTPOS);
 
     std::string cmd, token;
 
@@ -73,12 +71,12 @@ void UCI::loop()
         std::istringstream is(cmd);
         is >> token;
 
-        if      (token == "uci")     std::cout << "id name chessnut\n"
+        if      (token == "uci")     std::cout << "id name Chessnut\n"
                                                << "id author Aria Kafie\n"
-                                               << "uciok"               << std::endl;
-        else if (token == "isready") std::cout << "readyok"             << std::endl;
-        else if (token == "d")       std::cout << Position::to_string() << std::endl;
-        else if (token == "fen")     std::cout << Position::fen()       << std::endl;
+                                               << "uciok"         << std::endl;
+        else if (token == "isready") std::cout << "readyok"       << std::endl;
+        else if (token == "d")       std::cout << pos.to_string() << std::endl;
+        else if (token == "fen")     std::cout << pos.fen()       << std::endl;
         else if (token == "bmi")
 #ifdef BMI
             std::cout << "yes" << std::endl;
@@ -86,26 +84,22 @@ void UCI::loop()
             std::cout << "no"  << std::endl;
 #endif
         else if (token == "ucinewgame")
-        {
             TranspositionTable::clear();
-            RepetitionTable::clear();
-            RepetitionTable::push();
-        }
 
-        else if (token == "position")  position(is);
-        else if (token == "go")        go(is);
-        else if (token == "perft")     Debug::perft(is);
+        else if (token == "position")  position(pos, is);
+        else if (token == "go")        go(pos, is);
+        else if (token == "perft")     Debug::perft(pos, is);
         else if (token == "debug")     Debug::go();
         else if (token == "noverbose") Search::noverbose();
         else if (token == "moves")
-            for (Move m; is >> token && (m = uci_to_move(token)); Position::commit_move(m));
+            for (Move m; is >> token && (m = uci_to_move(pos, token)); pos.commit_move(m));
         
     } while (cmd != "quit");
 }
 
-Move uci_to_move(const std::string& uci)
-{
-    for (Move list[MAX_MOVES], *m = list, *end = get_moves(list); m != end; m++)
+Move uci_to_move(const Position& pos, const std::string& uci) {
+
+    for (Move list[MAX_MOVES], *m = list, *end = get_moves(pos, list); m != end; m++)
         if (move_to_uci(*m) == uci) return *m;
 
     return NULLMOVE;

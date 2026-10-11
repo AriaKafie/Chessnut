@@ -7,10 +7,16 @@
 #include <vector>
 
 #include "bitboard.h"
-#include "transpositiontable.h"
 #include "types.h"
 
-#define bb(P) bitboard<P>()
+#define STARTPOS "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -"
+
+namespace Zobrist {
+    constexpr uint64_t Side = 0xeeb3b2fe864d41e5ull;
+    inline uint64_t hash[B_KING + 1][SQUARE_NB];
+    inline uint64_t enpassant[SQUARE_NB];
+    inline uint64_t castling[1 << 4];
+}
 
 typedef struct {
     uint64_t  key;
@@ -21,65 +27,152 @@ typedef struct {
     GamePhase gamephase;
 } StateInfo;
 
-extern Bitboard bitboards[16];
-extern Piece board[SQUARE_NB];
+constexpr int RT_SIZE = 1024;
 
-extern StateInfo state_stack[MAX_PLIES], *state_ptr;
+typedef struct {
+    uint64_t key;
+    int      occurrences;
+} RTEntry;
 
-namespace Zobrist {
-    constexpr uint64_t Side = 0xeeb3b2fe864d41e5ull;
-    inline uint64_t hash[B_KING + 1][SQUARE_NB];
-    inline uint64_t enpassant[SQUARE_NB];
-    inline uint64_t castling[1 << 4];
+class Position {
+
+public:
+    static void init();
+
+    Position(const std::string& fen = STARTPOS);
+    Position(const Position& other);
+    Position& operator=(const Position&) = delete;
+    ~Position();
+
+    void set(const std::string& fen);
+    std::string fen() const;
+    std::string to_string() const;
+
+    Bitboard  bb(Piece pc) const;
+    Bitboard  occupied_bb() const;
+    Piece     piece_on(Square sq) const;
+    PieceType piece_type_on(Square sq) const;
+
+    uint64_t  key() const;
+    uint8_t   castling_rights() const;
+    Square    ep_sq() const;
+    Bitboard  ep_bb() const;
+    Color     side_to_move() const;
+    bool      white_to_move() const;
+    bool      black_to_move() const;
+    bool      midgame() const;
+    bool      endgame() const;
+    bool      mopup() const;
+
+    bool is_capture(Move m) const;
+    bool is_quiet(Move m) const;
+    template<Color SideToMove>
+    bool in_check() const;
+    bool is_repetition() const;
+
+    void commit_move(Move m);
+    template<Color Us>
+    void do_move(Move m);
+    template<Color Us>
+    void undo_move(Move m);
+    void do_null_move();
+    void undo_null_move();
+    template<Color Us>
+    void do_qmove(Move m);
+    template<Color Us>
+    void undo_qmove(Move m, Piece captured);
+
+private:
+    template<Color JustMoved>
+    void update_castling_rights();
+    void set_gamephase();
+
+    void rt_push();
+    void rt_pop();
+    void rt_clear();
+
+    StateInfo  state_stack[MAX_PLIES];
+    StateInfo* state_ptr = state_stack;
+    RTEntry*   repetition_table;
+    Bitboard   bitboards[16];
+    Piece      board[SQUARE_NB];
+};
+
+inline Position::Position(const std::string& fen) {
+    repetition_table = new RTEntry[RT_SIZE];
+    set(fen);
 }
 
-template<Piece P>
-Bitboard bitboard() {
-    return bitboards[P];
+inline Position::Position(const Position& other) {
+
+    repetition_table = new RTEntry[RT_SIZE];
+
+    memcpy(state_stack, other.state_stack, sizeof(StateInfo) * MAX_PLIES);
+    memcpy(repetition_table, other.repetition_table, sizeof(RTEntry) * RT_SIZE);
+    memcpy(bitboards, other.bitboards, sizeof(Bitboard) * 16);
+    memcpy(board, other.board, sizeof(Piece) * SQUARE_NB);
+
+    state_ptr = state_stack + (other.state_ptr - other.state_stack);
 }
 
-inline Piece piece_on(Square sq) {
+inline Position::~Position() {
+    delete[] repetition_table;
+}
+
+inline Bitboard Position::bb(Piece pc) const {
+    return bitboards[pc];
+}
+
+inline Bitboard Position::occupied_bb() const {
+    return bitboards[WHITE] | bitboards[BLACK];
+}
+
+inline Piece Position::piece_on(Square sq) const {
     return board[sq];
 }
 
-inline PieceType piece_type_on(Square sq) {
+inline PieceType Position::piece_type_on(Square sq) const {
     return piece_type_of(board[sq]);
 }
 
-inline bool is_capture(Move m) {
+inline uint64_t Position::key() const {
+    return state_ptr->key;
+}
+
+inline uint8_t Position::castling_rights() const {
+    return state_ptr->castling_rights;
+}
+
+inline Square Position::ep_sq() const {
+    return state_ptr->ep_sq;
+}
+
+inline Bitboard Position::ep_bb() const {
+    return square_bb(state_ptr->ep_sq);
+}
+
+inline Color Position::side_to_move() const {
+    return state_ptr->side_to_move;
+}
+
+inline bool Position::white_to_move() const { return state_ptr->side_to_move == WHITE; }
+inline bool Position::black_to_move() const { return state_ptr->side_to_move == BLACK; }
+
+inline bool Position::midgame() const { return state_ptr->gamephase == MIDGAME; }
+inline bool Position::endgame() const { return state_ptr->gamephase == ENDGAME; }
+inline bool Position::mopup  () const { return state_ptr->gamephase == MOPUP;   }
+
+inline bool Position::is_capture(Move m) const {
     return piece_on(to_sq(m));
 }
 
-inline bool is_quiet(Move m) {
+inline bool Position::is_quiet(Move m) const {
     return !piece_on(to_sq(m));
 }
 
-namespace Position {
-
-void init();
-void set(const std::string& fen);
-void commit_move(Move m);
-std::string fen();
-std::string to_string();
-
-inline bool white_to_move() { return state_ptr->side_to_move == WHITE; }
-inline bool black_to_move() { return state_ptr->side_to_move == BLACK; }
-
-inline bool midgame() { return state_ptr->gamephase == MIDGAME; }
-inline bool endgame() { return state_ptr->gamephase == ENDGAME; }
-inline bool mopup  () { return state_ptr->gamephase == MOPUP;   }
-
-inline Bitboard occupied() { return bitboards[WHITE] | bitboards[BLACK]; }
-
-inline Bitboard ep_bb() { return square_bb(state_ptr->ep_sq); }
-
-inline uint64_t key() { return state_ptr->key; }
-
-inline Color side_to_move() { return state_ptr->side_to_move; }
-
 template<Color SideToMove>
-bool in_check()
-{
+bool Position::in_check() const {
+
     constexpr Color Them = !SideToMove;
 
     constexpr Piece EnemyPawn   = make_piece(Them, PAWN);
@@ -88,36 +181,17 @@ bool in_check()
     constexpr Piece EnemyRook   = make_piece(Them, ROOK);
     constexpr Piece EnemyQueen  = make_piece(Them, QUEEN);
 
-    Square ksq = bsf(bitboard<make_piece(SideToMove, KING)>());
+    Square ksq = bsf(bb(make_piece(SideToMove, KING)));
 
     return
-        pawn_attacks<SideToMove>(ksq)   &  bb(EnemyPawn)
-      | knight_attacks(ksq)             &  bb(EnemyKnight)
-      | bishop_attacks(ksq, occupied()) & (bb(EnemyQueen) | bb(EnemyBishop))
-      | rook_attacks  (ksq, occupied()) & (bb(EnemyQueen) | bb(EnemyRook));
+        pawn_attacks<SideToMove>(ksq)      &  bb(EnemyPawn)
+      | knight_attacks(ksq)                &  bb(EnemyKnight)
+      | bishop_attacks(ksq, occupied_bb()) & (bb(EnemyQueen) | bb(EnemyBishop))
+      | rook_attacks  (ksq, occupied_bb()) & (bb(EnemyQueen) | bb(EnemyRook));
 }
-
-inline void do_null() {
-
-    memcpy(state_ptr + 1, state_ptr, sizeof(StateInfo));
-    state_ptr++;
-
-    state_ptr->captured = NO_PIECE;
-
-    state_ptr->key ^= Zobrist::Side;
-
-    state_ptr->key ^= Zobrist::enpassant[(state_ptr - 1)->ep_sq];
-    state_ptr->ep_sq = 0;
-}
-
-inline void undo_null() {
-    state_ptr--;
-}
-
-} // namespace Position
 
 template<Color JustMoved>
-ForceInline void update_castling_rights() {
+void Position::update_castling_rights() {
     state_ptr->key ^= Zobrist::castling[state_ptr->castling_rights];
     constexpr Bitboard Mask = JustMoved == WHITE ? square_bb(A1, E1, H1, A8, H8) : square_bb(A8, E8, H8, A1, H1);
 #ifdef BMI
@@ -130,85 +204,7 @@ ForceInline void update_castling_rights() {
 }
 
 template<Color Us>
-ForceInline void do_capture(Move m)
-{
-    constexpr Color Them  = !Us;
-    constexpr Piece Pawn  = make_piece(Us, PAWN);
-    constexpr Piece Queen = make_piece(Us, QUEEN);
-
-    Square from = from_sq(m), to = to_sq(m);
-
-    Bitboard to_bb   = square_bb(to);
-    Bitboard from_to = square_bb(from, to);
-
-    switch (type_of(m))
-    {
-    case NORMAL:
-        bitboards[board[to]]   ^= to_bb;
-        bitboards[Them]        ^= to_bb;
-        bitboards[board[from]] ^= from_to;
-        bitboards[Us]          ^= from_to;
-
-        board[to]   = board[from];
-        board[from] = NO_PIECE;
-
-        return;
-    case PROMOTION:
-        Piece promotion = make_piece(Us, promotion_type_of(m));
-
-        bitboards[board[to]] ^= to_bb;
-        bitboards[Them]      ^= to_bb;
-        bitboards[Pawn]      ^= square_bb(from);
-        bitboards[promotion] ^= to_bb;
-        bitboards[Us]        ^= from_to;
-
-        board[to]   = promotion;
-        board[from] = NO_PIECE;
-
-        return;
-    }
-}
-
-template<Color Us>
-ForceInline void undo_capture(Move m, Piece captured)
-{
-    constexpr Color Them  = !Us;
-    constexpr Piece Pawn  = make_piece(Us, PAWN);
-    constexpr Piece Queen = make_piece(Us, QUEEN);
-
-    Square from = from_sq(m), to = to_sq(m);
-
-    Bitboard to_bb   = square_bb(to);
-    Bitboard from_to = square_bb(from, to);
-
-    switch (type_of(m))
-    {
-    case NORMAL:
-        bitboards[board[to]] ^= from_to;
-        bitboards[Us]        ^= from_to;
-        bitboards[captured]  ^= to_bb;
-        bitboards[Them]      ^= to_bb;
-
-        board[from] = board[to];
-        board[to]   = captured;
-
-        return;
-    case PROMOTION:
-        bitboards[board[to]] ^= to_bb;
-        bitboards[Pawn]      ^= square_bb(from);
-        bitboards[Us]        ^= from_to;
-        bitboards[captured]  ^= to_bb;
-        bitboards[Them]      ^= to_bb;
-
-        board[from] = Pawn;
-        board[to]   = captured;
-
-        return;
-    }
-}
-
-template<Color Us>
-void do_move(Move m)
+void Position::do_move(Move m)
 {
     constexpr Color Them = !Us;
 
@@ -226,6 +222,7 @@ void do_move(Move m)
 
     memcpy(state_ptr + 1, state_ptr, sizeof(StateInfo));
     state_ptr++;
+
     state_ptr->captured = capture;
 
     state_ptr->ep_sq = 0;
@@ -262,7 +259,7 @@ void do_move(Move m)
 
         update_castling_rights<Us>();
 
-        RepetitionTable::push();
+        rt_push();
 
         return;
     case PROMOTION:
@@ -285,7 +282,7 @@ void do_move(Move m)
         
         update_castling_rights<Us>();
 
-        RepetitionTable::push();
+        rt_push();
 
         return;
     }
@@ -320,7 +317,7 @@ void do_move(Move m)
 
         update_castling_rights<Us>();
 
-        RepetitionTable::push();
+        rt_push();
 
         return;
     }
@@ -343,16 +340,16 @@ void do_move(Move m)
         board[to]    = Pawn;
         board[capsq] = NO_PIECE;
         
-        RepetitionTable::push();
+        rt_push();
 
         return;
     }
 }
 
 template<Color Us>
-void undo_move(Move m)
+void Position::undo_move(Move m)
 {
-    RepetitionTable::pop();
+    rt_pop();
 
     constexpr Color Them = !Us;
 
@@ -429,6 +426,84 @@ void undo_move(Move m)
         board[to]    = NO_PIECE;
         board[from]  = Pawn;
         board[capsq] = EnemyPawn;
+
+        return;
+    }
+}
+
+template<Color Us>
+void Position::do_qmove(Move m)
+{
+    constexpr Color Them  = !Us;
+    constexpr Piece Pawn  = make_piece(Us, PAWN);
+    constexpr Piece Queen = make_piece(Us, QUEEN);
+
+    Square from = from_sq(m), to = to_sq(m);
+
+    Bitboard to_bb   = square_bb(to);
+    Bitboard from_to = square_bb(from, to);
+
+    switch (type_of(m))
+    {
+    case NORMAL:
+        bitboards[board[to]]   ^= to_bb;
+        bitboards[Them]        ^= to_bb;
+        bitboards[board[from]] ^= from_to;
+        bitboards[Us]          ^= from_to;
+
+        board[to]   = board[from];
+        board[from] = NO_PIECE;
+
+        return;
+    case PROMOTION:
+        Piece promotion = make_piece(Us, promotion_type_of(m));
+
+        bitboards[board[to]] ^= to_bb;
+        bitboards[Them]      ^= to_bb;
+        bitboards[Pawn]      ^= square_bb(from);
+        bitboards[promotion] ^= to_bb;
+        bitboards[Us]        ^= from_to;
+
+        board[to]   = promotion;
+        board[from] = NO_PIECE;
+
+        return;
+    }
+}
+
+template<Color Us>
+void Position::undo_qmove(Move m, Piece captured)
+{
+    constexpr Color Them  = !Us;
+    constexpr Piece Pawn  = make_piece(Us, PAWN);
+    constexpr Piece Queen = make_piece(Us, QUEEN);
+
+    Square from = from_sq(m), to = to_sq(m);
+
+    Bitboard to_bb   = square_bb(to);
+    Bitboard from_to = square_bb(from, to);
+
+    switch (type_of(m))
+    {
+    case NORMAL:
+        bitboards[board[to]] ^= from_to;
+        bitboards[Us]        ^= from_to;
+        bitboards[captured]  ^= to_bb;
+        bitboards[Them]      ^= to_bb;
+
+        board[from] = board[to];
+        board[to]   = captured;
+
+        return;
+    case PROMOTION:
+        bitboards[board[to]] ^= to_bb;
+        bitboards[Pawn]      ^= square_bb(from);
+        bitboards[Us]        ^= from_to;
+        bitboards[captured]  ^= to_bb;
+        bitboards[Them]      ^= to_bb;
+
+        board[from] = Pawn;
+        board[to]   = captured;
 
         return;
     }

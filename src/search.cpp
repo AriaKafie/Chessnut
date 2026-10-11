@@ -1,8 +1,10 @@
 
 #include "search.h"
 
+#include <algorithm>
 #include <cmath>
 #include <iomanip>
+#include <iostream>
 #include <thread>
 
 #include "debug.h"
@@ -10,6 +12,7 @@
 #include "movegen.h"
 #include "moveordering.h"
 #include "position.h"
+#include "transpositiontable.h"
 #include "uci.h"
 
 int reductions[MAX_PLIES];
@@ -56,18 +59,18 @@ int reduction(bool i, int depth, int mn, int delta) {
 }
 
 template<Color SideToMove>
-int qsearch(int alpha, int beta)
+int qsearch(Position& pos, int alpha, int beta)
 {
     status.nodes++;
 
-    int eval = static_eval<SideToMove>();
+    int eval = static_eval<SideToMove>(pos);
 
     if (eval >= beta)
         return eval;
 
     alpha = std::max(alpha, eval);
 
-    CaptureList<SideToMove> captures;
+    CaptureList<SideToMove> captures(pos);
 
     if (captures.size() == 0)
         return eval;
@@ -76,11 +79,11 @@ int qsearch(int alpha, int beta)
 
     for (Move move : captures)
     {
-        Piece captured = piece_on(to_sq(move));
+        Piece captured = pos.piece_on(to_sq(move));
 
-        do_capture<SideToMove>(move);
-        eval = -qsearch<!SideToMove>(-beta, -alpha);
-        undo_capture<SideToMove>(move, captured);
+        pos.do_qmove<SideToMove>(move);
+        eval = -qsearch<!SideToMove>(pos, -beta, -alpha);
+        pos.undo_qmove<SideToMove>(move, captured);
 
         if (eval >= beta)
             return eval;
@@ -92,35 +95,35 @@ int qsearch(int alpha, int beta)
 }
 
 template<NodeType NodeT, Color SideToMove>
-int search(int alpha, int beta, int depth, bool null_ok, SearchInfo *si)
+int search(Position& pos, int alpha, int beta, int depth, bool null_ok, SearchInfo *si)
 {
     constexpr bool Root   = NodeT == ROOT;
     constexpr bool PVNode = Root || NodeT == PV;
 
     status.nodes++;
 
-    if (status.search_cancelled) [[unlikely]]
+    if (status.search_cancelled)
         return 0;
         
-    if (!Root && RepetitionTable::draw())
+    if (!Root && pos.is_repetition())
         return 0;
 
     if (depth <= 0)
-        return qsearch<SideToMove>(alpha, beta);
+        return qsearch<SideToMove>(pos, alpha, beta);
 
-    if (int lookup = TranspositionTable::lookup(depth, alpha, beta, si->ply); !Root && lookup != NO_EVAL)
+    if (int lookup = TranspositionTable::lookup(pos.key(), depth, alpha, beta, si->ply); !Root && lookup != NO_EVAL)
         return lookup;
 
-    si->static_ev = static_eval<SideToMove>();
-    bool in_check = Position::in_check<SideToMove>();
+    si->static_ev = static_eval<SideToMove>(pos);
+    bool in_check = pos.in_check<SideToMove>();
 
-    if (null_ok && Position::midgame() && depth >= 3 && !in_check)
+    if (null_ok && pos.midgame() && depth >= 3 && !in_check)
     {
         int R = std::max(1, std::min(int(si->static_ev - beta) / 232, 6) + depth / 3 + 5);
 
-        Position::do_null();
-        int eval = -search<NONPV, !SideToMove>(-beta, -beta + 1, depth - R, false, si + 1);
-        Position::undo_null();
+        pos.do_null_move();
+        int eval = -search<NONPV, !SideToMove>(pos, -beta, -beta + 1, depth - R, false, si + 1);
+        pos.undo_null_move();
 
         if (status.search_cancelled) [[unlikely]]
             return 0;
@@ -129,9 +132,9 @@ int search(int alpha, int beta, int depth, bool null_ok, SearchInfo *si)
             return eval;
     }
 
-    Move ttmove = TranspositionTable::lookup_move();
+    Move ttmove = TranspositionTable::lookup_move(pos.key());
 
-    MoveList<SideToMove> moves(ttmove, si);
+    MoveList<SideToMove> moves(pos, ttmove, si);
 
     if (moves.size() == 0)
         return in_check ? -MATE + si->ply : 0;
@@ -158,19 +161,19 @@ int search(int alpha, int beta, int depth, bool null_ok, SearchInfo *si)
         if (!Root && lmr_depth < 7 && type_of(m) == NORMAL)
         {
             int futility_value =
-                si->static_ev + piece_weight(piece_type_on(to_sq(m))) + 200 + 116 * lmr_depth;
+                si->static_ev + piece_weight(pos.piece_type_on(to_sq(m))) + 200 + 116 * lmr_depth;
 
             if (futility_value <= alpha)
                 continue;
         }
 
-        do_move<SideToMove>(m);
+        pos.do_move<SideToMove>(m);
 
         if (depth >= 2 && move_count > 1)
         {
             int reduced = std::clamp(lmr_depth, 1, new_depth);
 
-            eval = -search<NONPV, !SideToMove>(-(alpha + 1), -alpha, reduced, true, si + 1);
+            eval = -search<NONPV, !SideToMove>(pos, -(alpha + 1), -alpha, reduced, true, si + 1);
 
             if (eval > alpha && reduced < new_depth)
             {
@@ -180,7 +183,7 @@ int search(int alpha, int beta, int depth, bool null_ok, SearchInfo *si)
                 new_depth += doDeeperSearch - doShallowerSearch;
 
                 if (new_depth > reduced)
-                    eval = -search<NONPV, !SideToMove>(-(alpha + 1), -alpha, new_depth, !null_ok, si + 1);
+                    eval = -search<NONPV, !SideToMove>(pos, -(alpha + 1), -alpha, new_depth, !null_ok, si + 1);
             }
             else if (eval > alpha && eval < best_eval + 9)
                 new_depth--;
@@ -191,25 +194,23 @@ int search(int alpha, int beta, int depth, bool null_ok, SearchInfo *si)
             if (!ttmove)
                 r += 1156;
 
-            eval = -search<NONPV, !SideToMove>(-(alpha + 1), -alpha,
+            eval = -search<NONPV, !SideToMove>(pos, -(alpha + 1), -alpha,
                 new_depth - (r > 3495) - (r > 5510 && new_depth > 2), !null_ok, si + 1);
         }
 
         if (PVNode && (move_count == 1 || eval > alpha))
-        {
-            eval = -search<PV, !SideToMove>(-beta, -alpha, new_depth, false, si + 1);
-        }
+            eval = -search<PV, !SideToMove>(pos, -beta, -alpha, new_depth, false, si + 1);
 
-        undo_move<SideToMove>(m);
+        pos.undo_move<SideToMove>(m);
 
-        if (status.search_cancelled) [[unlikely]]
+        if (status.search_cancelled)
             return 0;
 
         if (eval >= beta) {
 
-            TranspositionTable::record(depth, LOWER_BOUND, eval, m, si->ply);
+            TranspositionTable::record(pos.key(), depth, LOWER_BOUND, eval, m, si->ply);
 
-            if (is_quiet(m) && m != si->killers[0]) {
+            if (pos.is_quiet(m) && m != si->killers[0]) {
                 si->killers[1] = si->killers[0];
                 si->killers[0] = m;
             }
@@ -230,13 +231,13 @@ int search(int alpha, int beta, int depth, bool null_ok, SearchInfo *si)
         best_eval = std::max(eval, best_eval);
     }
 
-    TranspositionTable::record(depth, bound_type, alpha, best_move, si->ply);
+    TranspositionTable::record(pos.key(), depth, bound_type, alpha, best_move, si->ply);
 
     return alpha;
 }
 
 template<Color SideToMove>
-void iterative_deepening(int max_depth = MAX_DEPTH) {
+void iterative_deepening(Position& pos, int max_depth = MAX_DEPTH) {
 
     status.best_move = NO_MOVE;
     status.nodes     = 0;
@@ -254,7 +255,7 @@ void iterative_deepening(int max_depth = MAX_DEPTH) {
 
         fail:
 
-        int eval = search<ROOT, SideToMove>(alpha, beta, depth, false, si);
+        int eval = search<ROOT, SideToMove>(pos, alpha, beta, depth, false, si);
 
         if (status.search_cancelled)
             break;
@@ -281,19 +282,19 @@ void iterative_deepening(int max_depth = MAX_DEPTH) {
                       << " score cp "  << eval
                       << " nodes "     << status.nodes
                       << " nps "       << status.nodes * 1000 / (std::max(1, int(unix_ms() - start)))
-                      << " pv "        << Debug::pv() << std::endl;
+                      << " pv "        << Debug::pv(pos) << std::endl;
     }
 }
 
-void Search::go(uint64_t thinktime)
+void Search::go(Position pos, uint64_t thinktime)
 {
     status.search_cancelled = false;
 
     std::thread t(handle_search_stop, thinktime);
     t.detach();
 
-    Position::white_to_move() ? iterative_deepening<WHITE>()
-                              : iterative_deepening<BLACK>();
+    pos.white_to_move() ? iterative_deepening<WHITE>(pos)
+                        : iterative_deepening<BLACK>(pos);
 
     while (!status.search_cancelled)
     {}
@@ -303,6 +304,8 @@ void Search::go(uint64_t thinktime)
 
 void Search::count_nodes(int depth)
 {
+    Position pos;
+
     bool   verbose          = status.verbose;
     status.verbose          = false;
     status.search_cancelled = false;
@@ -314,19 +317,19 @@ void Search::count_nodes(int depth)
 
     std::cout << std::left << std::setw(maxw + 1) << "Fen" << "Nodes" << std::endl;
 
-    int total_nodes = 0;
+    uint64_t total_nodes = 0;
 
     for (const std::string& fen : Debug::fens)
     {
         std::cout << std::left << std::setw(maxw + 1) << fen;
 
-        Position::set(fen);
+        pos.set(fen);
 
         TranspositionTable::clear();
-        RepetitionTable::clear();
 
-        Position::white_to_move() ? iterative_deepening<WHITE>(depth)
-                                  : iterative_deepening<BLACK>(depth);
+        pos.white_to_move()
+            ? iterative_deepening<WHITE>(pos, depth)
+            : iterative_deepening<BLACK>(pos, depth);
 
         std::cout << status.nodes << std::endl;
 

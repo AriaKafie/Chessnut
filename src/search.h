@@ -2,14 +2,9 @@
 #ifndef SEARCH_H
 #define SEARCH_H
 
-#include <algorithm>
 #include <chrono>
-#include <cassert>
-#include <iostream>
-#include <string>
-#include <thread>
-#include <array>
 
+#include "position.h"
 #include "types.h"
 
 enum NodeType { ROOT, PV, NONPV };
@@ -27,7 +22,7 @@ inline uint64_t unix_ms() {
 namespace Search {
     void noverbose();
     void init();
-    void go(uint64_t thinktime = 0);
+    void go(Position pos, uint64_t thinktime = 0);
     void count_nodes(int depth);
 }
 

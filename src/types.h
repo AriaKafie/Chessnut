@@ -33,8 +33,8 @@ constexpr Move NO_MOVE  = 0;
 
 constexpr int MAX_DEPTH = 64;
 constexpr int MAX_PLIES = 128;
-constexpr int MATE      = 32000;
-constexpr int INFINITE  = MATE + 1;
+constexpr int MATE      = 32000; // 30k
+constexpr int INFINITE  = MATE + 1; // 32k
 constexpr int NO_EVAL   = 0x7fffffff;
 
 constexpr int MATE_IN_MAX_PLY  = MATE - MAX_PLIES;
