@@ -1,4 +1,5 @@
 
+#include <algorithm>
 #include <limits.h>
 
 #include "evaluation.h"
@@ -18,17 +19,16 @@ constexpr Score GOOD_CAPTURE_BASE  = GOOD_CAPTURE_MIN + (UINT16_MAX / 8);
 constexpr Score MAX_SCORE          = UINT16_MAX;
 constexpr Score SEEN_BY_PAWN_MALUS = 50;
 
-template<Color Us, Color Them>
-void CaptureList<Us, Them>::insertion_sort() {
+void insertion_sort(EMove* begin, EMove* end) {
 
-    for (EMove *p = moves + 1; p < last; p++) {
+    for (EMove *i = begin + 1; i < end; i++) {
 
-        EMove tmp = *p, *q;
+        EMove tmp = *i, *j;
 
-        for (q = p - 1; q >= moves && score_of(*q) < score_of(tmp); q--)
-            *(q + 1) = *q;
+        for (j = i - 1; j >= begin && score_of(*j) < score_of(tmp); j--)
+            *(j + 1) = *j;
 
-        *(q + 1) = tmp;
+        *(j + 1) = tmp;
     }
 }
 
@@ -54,35 +54,7 @@ void CaptureList<Us, Them>::sort()
         set_score(m, score);
     }
   
-    insertion_sort();
-}
-
-template<Color Us, Color Them>
-int MoveList<Us, Them>::partition(int low, int high) {
-
-    Score pivot = score_of(moves[high]);
-
-    int i = low - 1;
-
-    for (int j = low; j < high; j++) {
-        if (score_of(moves[j]) >= pivot) {
-            i++;
-            std::swap(moves[i], moves[j]);
-        }
-    }
-
-    std::swap(moves[i + 1], moves[high]);
-
-    return i + 1;
-}
-
-template<Color Us, Color Them>
-void MoveList<Us, Them>::quicksort(int low, int high) {
-    if (low < high) {
-        int pivot_index = partition(low, high);
-        quicksort(low, pivot_index - 1);
-        quicksort(pivot_index + 1, high);
-    }
+    insertion_sort(moves, last);
 }
 
 template<Color Us, Color Them>
@@ -122,7 +94,7 @@ void MoveList<Us, Them>::sort() {
                 score = BAD_QUIET_BASE;
 
             score += pos.endgame() && pt == KING
-                ? (psq_score<Us>(0,  to) - psq_score<Us>(0,  from)) / 2 //(end_king_squares[to] - end_king_squares[from]) / 2
+                ? (psq_score<Us>(0,  to) - psq_score<Us>(0,  from)) / 2 // (end_king_squares[to] - end_king_squares[from]) / 2
                 : (psq_score<Us>(pt, to) - psq_score<Us>(pt, from)) / 2;
         }
 
@@ -135,7 +107,7 @@ void MoveList<Us, Them>::sort() {
         set_score(m, score);
     }
 
-    quicksort(0, size() - 1);
+    insertion_sort(moves, last);
 }
 
 template void MoveList<WHITE>::sort();

@@ -69,6 +69,8 @@ public:
     template<Color SideToMove>
     bool in_check() const;
     bool is_repetition() const;
+    template<Color C>
+    Square king_sq() const;
 
     void commit_move(Move m);
     template<Color Us>
@@ -181,13 +183,18 @@ bool Position::in_check() const {
     constexpr Piece EnemyRook   = make_piece(Them, ROOK);
     constexpr Piece EnemyQueen  = make_piece(Them, QUEEN);
 
-    Square ksq = bsf(bb(make_piece(SideToMove, KING)));
+    Square ksq = king_sq<SideToMove>();
 
     return
         pawn_attacks<SideToMove>(ksq)      &  bb(EnemyPawn)
       | knight_attacks(ksq)                &  bb(EnemyKnight)
       | bishop_attacks(ksq, occupied_bb()) & (bb(EnemyQueen) | bb(EnemyBishop))
       | rook_attacks  (ksq, occupied_bb()) & (bb(EnemyQueen) | bb(EnemyRook));
+}
+
+template<Color C>
+Square Position::king_sq() const {
+    return bsf(bitboards[make_piece(C, KING)]);
 }
 
 template<Color JustMoved>
@@ -228,9 +235,9 @@ void Position::do_move(Move m)
     state_ptr->ep_sq = 0;
 
     if (Square ep_candidate = from + Up;
-        pc == Pawn          &&
-        (to - from) == Up*2 &&
-        (pawn_attacks<Us>(ep_candidate) & bb(make_piece(Them, PAWN)))) {
+        pc == Pawn
+        && (to - from) == Up*2
+        && (pawn_attacks<Us>(ep_candidate) & bb(make_piece(Them, PAWN)))) {
         
         state_ptr->ep_sq = ep_candidate;
     }

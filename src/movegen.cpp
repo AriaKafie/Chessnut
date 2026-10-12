@@ -93,7 +93,7 @@ void MoveList<Us, Them>::generate()
     Bitboard checkmask = knight_attacks(ksq) & pos.bb(OpponentKnight) | pawn_attacks<Us>(ksq) & pos.bb(OpponentPawn);
 
     for (Bitboard checkers = bishop_attacks(ksq, occupied) & opponent_bishop_queen | rook_attacks(ksq, occupied) & opponent_rook_queen; checkers; clear_lsb(checkers))
-        checkmask |= check_ray(ksq, bsf(checkers));
+        checkmask |= between_bb(ksq, bsf(checkers));
 
     if (more_than_one(checkmask & double_check(ksq))) {
         last = make_moves(last, ksq, king_attacks(ksq) & ~(seen_by_enemy | pos.bb(Us)));
@@ -105,7 +105,7 @@ void MoveList<Us, Them>::generate()
     Bitboard pinned = 0;
 
     for (Bitboard pinners = bishop_xray(ksq, occupied) & opponent_bishop_queen | rook_xray(ksq, occupied) & opponent_rook_queen; pinners; clear_lsb(pinners))
-        pinned |= check_ray(ksq, bsf(pinners));
+        pinned |= between_bb(ksq, bsf(pinners));
 
     constexpr Direction Up      = Us == WHITE ? NORTH      : SOUTH;
     constexpr Direction UpRight = Us == WHITE ? NORTH_EAST : SOUTH_WEST;
@@ -216,7 +216,7 @@ CaptureList<Us, Them>::CaptureList(const Position& p) : pos(p)
     Bitboard checkmask = knight_attacks(ksq) & pos.bb(OpponentKnight) | pawn_attacks<Us>(ksq) & pos.bb(OpponentPawn);
 
     for (Bitboard checkers = bishop_attacks(ksq, occupied) & opponent_bishop_queen | rook_attacks(ksq, occupied) & opponent_rook_queen; checkers; clear_lsb(checkers))
-        checkmask |= check_ray(ksq, bsf(checkers));
+        checkmask |= between_bb(ksq, bsf(checkers));
 
     if (more_than_one(checkmask & double_check(ksq))) {
         last = make_moves(last, ksq, king_attacks(ksq) & pos.bb(Them) & ~seen_by_enemy);
@@ -228,7 +228,7 @@ CaptureList<Us, Them>::CaptureList(const Position& p) : pos(p)
     Bitboard pinned = 0;
 
     for (Bitboard pinners = bishop_xray(ksq, occupied) & opponent_bishop_queen | rook_xray(ksq, occupied) & opponent_rook_queen; pinners; clear_lsb(pinners))
-        pinned |= check_ray(ksq, bsf(pinners));
+        pinned |= between_bb(ksq, bsf(pinners));
 
     constexpr Direction UpRight = Us == WHITE ? NORTH_EAST : SOUTH_WEST;
     constexpr Direction UpLeft  = Us == WHITE ? NORTH_WEST : SOUTH_EAST;

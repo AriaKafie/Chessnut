@@ -83,7 +83,7 @@ inline Bitboard DoubleCheck[SQUARE_NB];
 inline Bitboard KnightAttacks[SQUARE_NB];
 inline Bitboard KingAttacks[SQUARE_NB];
 inline Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
-inline Bitboard CheckRay[SQUARE_NB][SQUARE_NB];
+inline Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 inline Bitboard AlignMask[SQUARE_NB][SQUARE_NB];
 inline Bitboard MainDiag[SQUARE_NB];
 inline Bitboard AntiDiag[SQUARE_NB];
@@ -167,8 +167,8 @@ inline Bitboard double_check(Square sq) {
     return DoubleCheck[sq];
 }
 
-inline Bitboard check_ray(Square ksq, Square checker) {
-    return CheckRay[ksq][checker];
+inline Bitboard between_bb(Square ksq, Square checker) {
+    return BetweenBB[ksq][checker];
 }
 
 constexpr Bitboard square_bb(Square sq) {

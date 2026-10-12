@@ -166,8 +166,8 @@ int endgame(const Position& pos)
 {
     int score = material_count<Us>(pos);
 
-    Square friendly_ksq = bsf(pos.bb(make_piece(Us,   KING)));
-    Square opponent_ksq = bsf(pos.bb(make_piece(Them, KING)));
+    Square friendly_ksq = pos.king_sq<Us>();
+    Square opponent_ksq = pos.king_sq<Them>();
 
     score += psq_score<Us  >(0, friendly_ksq);
     score -= psq_score<Them>(0, opponent_ksq);
@@ -209,8 +209,8 @@ int mopup(const Position& pos) {
 
     int score = material_count<Us>(pos);
 
-    Square friendly_ksq = bsf(pos.bb(make_piece(Us,   KING)));
-    Square opponent_ksq = bsf(pos.bb(make_piece(Them, KING)));
+    Square friendly_ksq = pos.king_sq<Us>();
+    Square opponent_ksq = pos.king_sq<Them>();
 
     return score > 0
         ? score + 10 * distance_from_center(opponent_ksq) + 4 * (14 - square_distance(friendly_ksq, opponent_ksq))

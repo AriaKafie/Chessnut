@@ -34,8 +34,6 @@ public:
 private:
     void generate();
     void sort();
-    void quicksort(int low, int high);
-    int  partition(int low, int high);
     
     EMove           moves[MAX_MOVES];
     EMove*          last = moves;
@@ -107,8 +105,6 @@ public:
     void   sort();
 
 private:
-    void insertion_sort();
-
     EMove           moves[MAX_CAPTURES], *last = moves;
     const Position& pos;
     Bitboard        seen_by_enemy;

@@ -22,7 +22,6 @@ enum BoundType : uint8_t { EXACT, UPPER_BOUND, LOWER_BOUND };
 
 const int TT_SIZE = 1 << 23;
 
-
 typedef struct {
     uint64_t  key;
     int       eval;

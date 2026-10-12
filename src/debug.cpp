@@ -172,7 +172,7 @@ std::string rep_table_to_string() {
 }*/
 
 static void go() {
-    std::cout << "movelist cleanup" << std::endl;
+    std::cout << "movelist inssort" << std::endl;
 
     /*Position pos;
     SearchInfo si = {};
