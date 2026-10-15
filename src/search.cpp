@@ -107,7 +107,7 @@ int search(Position& pos, int alpha, int beta, int depth, bool null_ok, SearchIn
     if (!Root && pos.is_repetition())
         return 0;
 
-    if (depth <= 0)
+    if (depth <= 0 || si->ply > MAX_DEPTH)
         return qsearch<SideToMove>(pos, alpha, beta);
 
     if (int lookup = TranspositionTable::lookup(pos.key(), depth, alpha, beta, si->ply); !Root && lookup != NO_EVAL)

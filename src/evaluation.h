@@ -130,13 +130,11 @@ int midgame(const Position& pos)
 {
     int score = material_count<Us>(pos);
 
-    Bitboard friendly_pawn = pos.bb(make_piece(Us,   PAWN));
+    Bitboard friendly_pawn = pos.bb(make_piece(Us, PAWN));
     Bitboard opponent_pawn = pos.bb(make_piece(Them, PAWN));
-    Bitboard friendly_king = pos.bb(make_piece(Us,   KING));
-    Bitboard opponent_king = pos.bb(make_piece(Them, KING));
 
-    score += king_safety<Us  >(bsf(friendly_king), friendly_pawn)
-           - king_safety<Them>(bsf(opponent_king), opponent_pawn);
+    score += king_safety<Us  >(pos.king_sq<Us  >(), friendly_pawn)
+           - king_safety<Them>(pos.king_sq<Them>(), opponent_pawn);
 
     constexpr Bitboard Rank567 = relative_rank(Us, RANK_5, RANK_6, RANK_7);
     constexpr Bitboard Rank234 = relative_rank(Us, RANK_2, RANK_3, RANK_4);
@@ -166,11 +164,8 @@ int endgame(const Position& pos)
 {
     int score = material_count<Us>(pos);
 
-    Square friendly_ksq = pos.king_sq<Us>();
-    Square opponent_ksq = pos.king_sq<Them>();
-
-    score += psq_score<Us  >(0, friendly_ksq);
-    score -= psq_score<Them>(0, opponent_ksq);
+    score += psq_score<Us  >(0, pos.king_sq<Us  >());
+    score -= psq_score<Them>(0, pos.king_sq<Them>());
 
     constexpr Bitboard Rank2 = relative_rank(Us, RANK_2);
     constexpr Bitboard Rank3 = relative_rank(Us, RANK_3);

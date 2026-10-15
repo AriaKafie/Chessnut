@@ -2,6 +2,8 @@
 #ifndef MOVELIST_H
 #define MOVELIST_H
 
+#include <algorithm>
+
 #include "position.h"
 #include "search.h"
 #include "types.h"
@@ -27,9 +29,10 @@ public:
              SearchInfo*     si);
 
     Move   next_move();
-    EMove* begin()      { return moves; }
-    EMove* end()        { return last; }
+    EMove* begin() { return moves; }
+    EMove* end() { return last; }
     size_t size() const { return last - moves; }
+    bool   contains(Move m) { return std::find(begin(), end(), m) != end(); }
 
 private:
     void generate();
@@ -99,8 +102,8 @@ public:
     CaptureList() = delete;
     CaptureList(const Position& p);
 
-    EMove* begin()      { return moves; }
-    EMove* end()        { return last; }
+    EMove* begin() { return moves; }
+    EMove* end() { return last; }
     size_t size() const { return last - moves; }
     void   sort();
 

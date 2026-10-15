@@ -64,6 +64,9 @@ public:
     bool      endgame() const;
     bool      mopup() const;
 
+    template<Color SideToMove>
+    bool legal(Move m) const;
+
     bool is_capture(Move m) const;
     bool is_quiet(Move m) const;
     template<Color SideToMove>
@@ -232,6 +235,7 @@ void Position::do_move(Move m)
 
     state_ptr->captured = capture;
 
+    state_ptr->key ^= Zobrist::enpassant[state_ptr->ep_sq];
     state_ptr->ep_sq = 0;
 
     if (Square ep_candidate = from + Up;
@@ -242,7 +246,6 @@ void Position::do_move(Move m)
         state_ptr->ep_sq = ep_candidate;
     }
 
-    state_ptr->key ^= Zobrist::enpassant[(state_ptr - 1)->ep_sq];
     state_ptr->key ^= Zobrist::enpassant[state_ptr->ep_sq];
 
     Bitboard zero_to = ~square_bb(to);

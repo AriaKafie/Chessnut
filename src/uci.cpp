@@ -90,6 +90,8 @@ void UCI::loop()
         else if (token == "go")        go(pos, is);
         else if (token == "perft")     Debug::perft(pos, is);
         else if (token == "debug")     Debug::go();
+        else if (token == "save")      save_tt(is);
+        else if (token == "load")      load_tt(is);
         else if (token == "noverbose") Search::noverbose();
         else if (token == "moves")
             for (Move m; is >> token && (m = uci_to_move(pos, token)); pos.commit_move(m));

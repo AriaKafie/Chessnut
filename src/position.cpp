@@ -7,8 +7,15 @@
 #include <sstream>
 
 #include "evaluation.h"
+#include "movelist.h"
 #include "transpositiontable.h"
 #include "uci.h"
+
+template<Color SideToMove>
+bool Position::legal(Move m) const {
+    return MoveList<SideToMove>(*this).contains(m);
+} template bool Position::legal<WHITE>(Move) const;
+  template bool Position::legal<BLACK>(Move) const;
 
 void Position::init() {
 

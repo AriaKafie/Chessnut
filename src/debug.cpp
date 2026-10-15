@@ -32,13 +32,8 @@ static std::string pv(Position& pos)
     if (best == NO_MOVE)
         return "";
 
-    bool legal = false;
-
-    MoveList<STM> moves(pos);
-    for (Move m : moves)
-        if (m == best) legal = true;
-
-    if (!legal) return "";
+    if (!pos.legal<STM>(best))
+        return "";
 
     else {
         pos.do_move<STM>(best);
@@ -137,51 +132,66 @@ Nodes/second   : %llu)""\n\n",
     }
 }
 
-std::string rep_table_to_string() {
+void save_tt(std::istringstream& args) {
 
-    /*extern RTEntry repetition_table[];
+    extern TTEntry transposition_table[TT_SIZE];
 
-    std::ostringstream os;
-    std::string s = "+------------------+------+----+\n";
+    std::string filename = "tt.bin";
+    if (!args.eof())
+        args >> filename;
 
-    os << s << "| key              | loc  |  # |\n" << s;
-
-    for (int i = 0; i < RT_SIZE; i++) {
-        if (RTEntry& ri = repetition_table[i]; ri.occurrences) {
-            os << "| " << std::setw(16) << std::setfill('0') << std::hex << std::uppercase << ri.key;
-            os << " | " << std::setw(4) << std::setfill('0') << std::hex << std::uppercase << i;
-            os << " | " << std::setw(2) << std::setfill(' ') << std::dec << (int(ri.occurrences)) << " |\n";
-        }
+    std::ofstream fs(filename, std::ios::binary | std::ios::trunc);
+    if (!fs) {
+        std::cerr << "Failed to open " << filename << " for writing" << std::endl;
+        std::exit(1);
     }
 
-    return os.str() + s;*/
-    return "";
+    fs.write(reinterpret_cast<const char*>(transposition_table),
+        sizeof(transposition_table));
+
+    if (!fs) {
+        std::cerr << "Failed to write " << filename << std::endl;
+        std::exit(1);
+    }
 }
 
-/*Bitboard negative_spans(Color c, Bitboard pawns)
-{
-    Bitboard spans = 0;
+void load_tt(std::istringstream& args) {
 
-    for (;pawns; clear_lsb(pawns))
-    {
-        Square s = bsf(pawns);
-        spans |= (file_bb(s) | file_bb(s + EAST) & ~FILE_ABB | file_bb(s + WEST) & ~FILE_HBB) & mask(s, relative_direction(c, SOUTH));
+    extern TTEntry transposition_table[TT_SIZE];
+
+    std::string filename = "tt.bin";
+    if (!args.eof())
+        args >> filename;
+
+    std::cout << "Loading " << filename << "...\n";
+
+    std::ifstream fs(filename, std::ios::binary);
+    if (!fs) {
+        std::cerr << "Failed to open " << filename << " for reading\n";
+        return;
     }
 
-    return ~spans;
-}*/
+    constexpr std::streamsize size = sizeof(transposition_table);
+
+    fs.seekg(0, std::ios::end);
+    if (fs.tellg() != size) {
+        std::cerr << filename << " has an incorrect size\n";
+        return;
+    }
+
+    fs.seekg(0, std::ios::beg);
+    fs.read(reinterpret_cast<char*>(transposition_table), size);
+
+    if (!fs) {
+        std::cerr << "Failed to read " << filename << std::endl;
+        return;
+    }
+
+    std::cout << "Loaded " << size << " bytes.\n";
+}
 
 static void go() {
-    std::cout << "movelist inssort" << std::endl;
-
-    /*Position pos;
-    SearchInfo si = {};
-    MoveList<WHITE> ml(pos, 0, &si);
-
-    std::sort(ml.begin(), ml.end(), [](EMove a, EMove b) { return score_of(a) > score_of(b); });
-
-    for (EMove m : ml)
-        std::cout << move_to_uci(m) << ": " << score_of(m) << std::endl;*/
+    std::cout << "depth <= 0 || si->ply > MAX_DEPTH (MAX_DEPTH=128)" << std::endl;
 }
 
 void Debug::go() {::go();}
