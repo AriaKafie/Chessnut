@@ -31,7 +31,7 @@ void Position::init() {
     for (Square sq = H1; sq <= A8; sq++)
         Zobrist::enpassant[sq] = sq ? rng() : 0;
 
-    for (uint8_t castling_rights = 0; castling_rights <= 0xf; castling_rights++)
+    for (uint8_t castling_rights = NO_CASTLING; castling_rights <= ALL_CASTLING; castling_rights++)
         Zobrist::castling[castling_rights] = rng();
 }
 
@@ -120,7 +120,7 @@ void Position::do_null_move() {
 
     state_ptr->key ^= Zobrist::Side;
 
-    state_ptr->key ^= Zobrist::enpassant[(state_ptr - 1)->ep_sq];
+    state_ptr->key ^= Zobrist::enpassant[state_ptr->ep_sq];
     state_ptr->ep_sq = 0;
 }
 
@@ -184,10 +184,10 @@ std::string Position::fen() const {
         fen << "-";
 
     else {
-        if (state_ptr->castling_rights & 8) fen << "K";
-        if (state_ptr->castling_rights & 4) fen << "Q";
-        if (state_ptr->castling_rights & 2) fen << "k";
-        if (state_ptr->castling_rights & 1) fen << "q";
+        if (state_ptr->castling_rights & WHITE_OO ) fen << "K";
+        if (state_ptr->castling_rights & WHITE_OOO) fen << "Q";
+        if (state_ptr->castling_rights & BLACK_OO ) fen << "k";
+        if (state_ptr->castling_rights & BLACK_OOO) fen << "q";
     }
 
     fen << " " << (state_ptr->ep_sq ? square_to_uci(state_ptr->ep_sq) : "-");

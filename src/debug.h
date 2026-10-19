@@ -9,8 +9,6 @@
 #include "position.h"
 #include "types.h",
 
-Move *get_moves(const Position& pos, Move *list);
-
 void save_tt(std::istringstream& args);
 void load_tt(std::istringstream& args);
 

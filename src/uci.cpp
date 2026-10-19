@@ -101,8 +101,13 @@ void UCI::loop()
 
 Move uci_to_move(const Position& pos, const std::string& uci) {
 
-    for (Move list[MAX_MOVES], *m = list, *end = get_moves(pos, list); m != end; m++)
-        if (move_to_uci(*m) == uci) return *m;
+    for (EMove moves[MAX_MOVES], *m = pos.white_to_move()
+        ? (EMove*)memcpy(moves, MoveList<WHITE>(pos).begin(), sizeof(EMove) * MAX_MOVES)
+        : (EMove*)memcpy(moves, MoveList<BLACK>(pos).begin(), sizeof(EMove) * MAX_MOVES); *m; m++) {
+         
+        if (move_to_uci(*m) == uci)
+            return *m;
+    }
 
     return NULLMOVE;
 }

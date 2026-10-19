@@ -8,8 +8,8 @@
 #endif
 #include <sstream>
 
-Bitboard pdep(Bitboard mask, int pattern)
-{
+Bitboard pdep(Bitboard mask, int pattern) {
+
     Bitboard dest = 0;
 
     for (;pattern; clear_lsb(mask), pattern >>= 1)
@@ -18,14 +18,14 @@ Bitboard pdep(Bitboard mask, int pattern)
     return dest;
 }
 
-Bitboard attacks_bb(PieceType pt, Square sq, Bitboard occupied)
-{
+Bitboard attacks_bb(PieceType pt, Square sq, Bitboard occupied) {
+
     Bitboard  attacks              = 0;
     Direction rook_directions[4]   = { NORTH, EAST, SOUTH, WEST };
     Direction bishop_directions[4] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
 
-    for (Direction d : pt == BISHOP ? bishop_directions : rook_directions)
-    {
+    for (Direction d : pt == BISHOP ? bishop_directions : rook_directions) {
+
         Square s = sq;
 
         do
@@ -68,10 +68,8 @@ void Bitboards::init()
 #ifdef BMI
             m.xray = xray;
 
-            for (int i = 0; i < permutations; i++)
-            {
+            for (int i = 0; i < permutations; i++) {
                 Bitboard occupied = pdep(mask, i);
-
                 *base++ = attacks_bb(pt, sq, occupied);
                 *xray++ = attacks_bb(pt, sq, occupied ^ attacks_bb(pt, sq, occupied) & occupied);
             }
@@ -79,8 +77,7 @@ void Bitboards::init()
             bool failed = false;
             m.shift = 64 - popcount(mask);
 
-            for (int p = 0; p < permutations; p++)
-            {
+            for (int p = 0; p < permutations; p++) {
                 occupied[p] = pdep(mask, p);
                 attacks[p]  = attacks_bb(pt, sq, occupied[p]);
             }
@@ -99,11 +96,9 @@ void Bitboards::init()
 
                     base[key] = attacks[p];
                 }
-
             } while (failed);
 
             m.magic = magic;
-
             base += permutations;
 #endif
         }

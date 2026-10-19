@@ -5,34 +5,51 @@
 #include "movelist.h"
 #include "position.h"
 
-uint64_t castle_lut[COLOR_NB][1 << 4][1 << 6];
+template<Color Us>
+EMove* make_castling(EMove* list, const Position& pos, Bitboard occupied, Bitboard threats) {
 
-void MoveGen::init() {
+    static constexpr auto lut = []() {
 
-    for (Color c : { WHITE, BLACK }) {
+        std::array<
+            std::array<
+                std::array<uint64_t, 1 << 6>,
+            CASTLING_RIGHT_NB>,
+        COLOR_NB> table = {};
 
-        EMove k_castle = make_move<CASTLING>(c == WHITE ? E1 : E8, c == WHITE ? G1 : G8);
-        EMove q_castle = make_move<CASTLING>(c == WHITE ? E1 : E8, c == WHITE ? C1 : C8);
+        for (Color c : { WHITE, BLACK }) {
 
-        for (int rights = 0; rights <= 0xf; rights++) {
+            EMove k_castle = make_move<CASTLING>(c == WHITE ? E1 : E8, c == WHITE ? G1 : G8);
+            EMove q_castle = make_move<CASTLING>(c == WHITE ? E1 : E8, c == WHITE ? C1 : C8);
 
-            bool k_rights = rights & (c == WHITE ? 8 : 2);
-            bool q_rights = rights & (c == WHITE ? 4 : 1);
+            for (int rights = 0; rights < CASTLING_RIGHT_NB; rights++) {
 
-            for (int violations = 0; violations <= 0x3f; violations++) {
+                bool k_rights = rights & (c == WHITE ? WHITE_OO  : BLACK_OO);
+                bool q_rights = rights & (c == WHITE ? WHITE_OOO : BLACK_OOO);
 
-                EMove res[2] = {}, *p = res;
+                for (int violations = 0; violations <= 0x3f; violations++) {
 
-                if (k_rights && (violations & 0b000111) == 0)
-                    *p++ = k_castle;
+                    EMove res[2] = {}, *p = res;
 
-                if (q_rights && (violations & 0b111100) == 0)
-                    *p++ = q_castle;
+                    if (k_rights && (violations & 0b000111) == 0)
+                        *p++ = k_castle;
 
-                memcpy(&castle_lut[c][rights][violations], res, 8);
+                    if (q_rights && (violations & 0b111100) == 0)
+                        *p++ = q_castle;
+
+                    table[c][rights][violations] = uint64_t(res[0]) | (uint64_t(res[1]) << 32);
+                }
             }
         }
-    }
+
+        return table;
+    }();
+
+    constexpr int Shift = Us == WHITE ? 1 : 57;
+    constexpr Bitboard NoOcc = Us == WHITE ? square_bb(B1, C1, D1, F1, G1) : square_bb(B8, C8, D8, F8, G8);
+    constexpr Bitboard NoAtk = Us == WHITE ? square_bb(C1, D1, E1, F1, G1) : square_bb(C8, D8, E8, F8, G8);
+
+    memcpy(list, &lut[Us][pos.castling_rights()][(NoOcc & occupied | NoAtk & threats) >> Shift], 8);
+    return list + popcount(*(uint64_t*)list & 0x100000001000);
 }
 
 template<MoveType Type, Direction D>
@@ -152,7 +169,7 @@ void MoveList<Us, Them>::generate()
     }
 
     Bitboard bishop_queen = pos.bb(FriendlyBishop) | pos.bb(FriendlyQueen);
-    Bitboard rook_queen   = pos.bb(FriendlyRook)   | pos.bb(FriendlyQueen);
+    Bitboard rook_queen   = pos.bb(FriendlyRook) | pos.bb(FriendlyQueen);
 
     for (Bitboard b = bishop_queen & ~pinned; b; clear_lsb(b)) {
         Square from = bsf(b);
@@ -175,14 +192,9 @@ void MoveList<Us, Them>::generate()
     }
 
     last = make_moves(last, ksq, king_attacks(ksq) & ~(seen_by_enemy | pos.bb(Us)));
+    last = make_castling<Us>(last, pos, occupied, seen_by_enemy);
 
-    constexpr int Shift = Us == WHITE ? 1 : 57;
-    constexpr Bitboard NoAtk = Us == WHITE ? square_bb(C1, D1, E1, F1, G1) : square_bb(C8, D8, E8, F8, G8);
-    constexpr Bitboard NoOcc = Us == WHITE ? square_bb(B1, C1, D1, F1, G1) : square_bb(B8, C8, D8, F8, G8);
-
-    uint64_t *u = (uint64_t*)last;
-    *u = castle_lut[Us][pos.castling_rights()][(NoAtk & seen_by_enemy | NoOcc & occupied) >> Shift];
-    last += popcount(*u & 0x100000001000);
+    *last = NULLMOVE;
 }
 
 template void MoveList<WHITE>::generate();

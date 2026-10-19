@@ -191,16 +191,7 @@ void load_tt(std::istringstream& args) {
 }
 
 static void go() {
-    std::cout << "depth <= 0 || si->ply > MAX_DEPTH (MAX_DEPTH=128)" << std::endl;
+    std::cout << "static_cxpr_v2" << std::endl;
 }
 
 void Debug::go() {::go();}
-
-Move* get_moves(const Position& pos, Move *list)
-{
-#define populate(c) \
-    { MoveList<c> moves(pos); for (Move m : moves) *list++ = m; return list; }
-
-    if (pos.white_to_move()) populate(WHITE) else populate(BLACK);
-#undef populate
-}

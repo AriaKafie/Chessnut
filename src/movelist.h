@@ -8,8 +8,6 @@
 #include "search.h"
 #include "types.h"
 
-namespace MoveGen { void init(); };
-
 typedef int Stage;
 enum Stages {
     TT, GENERATE, GENERATED
@@ -66,7 +64,6 @@ MoveList<Us, Them>::MoveList(const Position& p,
         stage = TT;
     } else {
         generate();
-        *last = NULLMOVE;
         sort();
         stage = GENERATED;
     }
@@ -85,7 +82,6 @@ Move MoveList<Us, Them>::next_move() {
         stage++;
         last = moves;
         generate();
-        *last = NULLMOVE;
         sort();
         return *cur++;
 

@@ -37,7 +37,7 @@ constexpr int MATE      = 32000; // 30k
 constexpr int INFINITE  = MATE + 1; // 32k
 constexpr int NO_EVAL   = 0x7fffffff;
 
-constexpr int MATE_IN_MAX_PLY = MATE - MAX_PLIES;
+constexpr int MATE_IN_MAX_PLY  = MATE - MAX_PLIES;
 constexpr int MATED_IN_MAX_PLY = -MATE_IN_MAX_PLY;
 
 inline bool is_win(int eval) {
@@ -80,6 +80,22 @@ enum : uint16_t {
     BISHOP_PROMOTION = PROMOTION + ((BISHOP - KNIGHT) << 14),
     ROOK_PROMOTION   = PROMOTION + ((ROOK   - KNIGHT) << 14),
     QUEEN_PROMOTION  = PROMOTION + ((QUEEN  - KNIGHT) << 14)
+};
+
+enum {
+    NO_CASTLING,
+    WHITE_OO  = 1 << 3,
+    WHITE_OOO = WHITE_OO >> 1,
+    BLACK_OO  = WHITE_OO >> 2,
+    BLACK_OOO = WHITE_OO >> 3,
+
+    KING_SIDE      = WHITE_OO | BLACK_OO,
+    QUEEN_SIDE     = WHITE_OOO | BLACK_OOO,
+    WHITE_CASTLING = WHITE_OO | WHITE_OOO,
+    BLACK_CASTLING = BLACK_OO | BLACK_OOO,
+    ALL_CASTLING   = WHITE_CASTLING | BLACK_CASTLING,
+
+    CASTLING_RIGHT_NB = 16
 };
 
 enum {
