@@ -116,6 +116,7 @@ void MoveList<Us, Them>::generate()
 
     if (more_than_one(checkmask & double_check(ksq))) {
         last = make_moves(last, ksq, king_attacks(ksq) & ~(seen_by_enemy | pos.bb(Us)));
+        *last = NULLMOVE;
         return;
     }
 
