@@ -27,6 +27,7 @@ typedef int8_t   Square;
 typedef uint8_t  Piece;
 typedef uint8_t  PieceType;
 typedef uint8_t  Color;
+typedef uint8_t  CastlingRights;
 
 constexpr Move NULLMOVE = 0;
 constexpr Move NO_MOVE  = 0;
@@ -132,6 +133,10 @@ enum {
     NORTH_WEST = NORTH + WEST,
     SOUTH_WEST = SOUTH + WEST,
 };
+
+constexpr CastlingRights make_castling_rights(Color c, CastlingRights cr) {
+    return (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING) & cr;
+}
 
 constexpr void set_score(EMove& em, Score score) {
     em += score << 16;

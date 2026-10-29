@@ -191,7 +191,7 @@ void load_tt(std::istringstream& args) {
 }
 
 static void go() {
-    std::cout << "static_cxpr_v2" << std::endl;
+    std::cout << "nonfunctional_changes" << std::endl;
 }
 
 void Debug::go() {::go();}

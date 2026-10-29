@@ -96,6 +96,7 @@ void Bitboards::init()
 
                     base[key] = attacks[p];
                 }
+
             } while (failed);
 
             m.magic = magic;
@@ -130,10 +131,10 @@ void Bitboards::init()
         Square sq = make_square(rank_of(s1), FILE_G);
 
         KMagics[WHITE][s1].mask =
-            ((rank_bb(sq + NORTH) | rank_bb(sq + NORTH + NORTH)) & ~(mask(sq + WEST, WEST))) << std::clamp(s1 % 8 - 1, 0, 5) & mask(s1, NORTH);
+            ((rank_bb(sq + NORTH) | rank_bb(sq + NORTH*2)) & ~(mask(sq + WEST, WEST))) << std::clamp(s1 % 8 - 1, 0, 5) & mask(s1, NORTH);
 
         KMagics[BLACK][s1].mask =
-            ((rank_bb(sq + SOUTH) | rank_bb(sq + SOUTH + SOUTH)) & ~(mask(sq + WEST, WEST))) << std::clamp(s1 % 8 - 1, 0, 5) & mask(s1, SOUTH);
+            ((rank_bb(sq + SOUTH) | rank_bb(sq + SOUTH*2)) & ~(mask(sq + WEST, WEST))) << std::clamp(s1 % 8 - 1, 0, 5) & mask(s1, SOUTH);
 
         DoubleCheck[s1] = KingAttacks[s1] | KnightAttacks[s1];
 

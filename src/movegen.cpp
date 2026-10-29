@@ -21,10 +21,10 @@ EMove* make_castling(EMove* list, const Position& pos, Bitboard occupied, Bitboa
             EMove k_castle = make_move<CASTLING>(c == WHITE ? E1 : E8, c == WHITE ? G1 : G8);
             EMove q_castle = make_move<CASTLING>(c == WHITE ? E1 : E8, c == WHITE ? C1 : C8);
 
-            for (int rights = 0; rights < CASTLING_RIGHT_NB; rights++) {
+            for (CastlingRights rights = NO_CASTLING; rights <= ALL_CASTLING; rights++) {
 
-                bool k_rights = rights & (c == WHITE ? WHITE_OO  : BLACK_OO);
-                bool q_rights = rights & (c == WHITE ? WHITE_OOO : BLACK_OOO);
+                bool k_rights = make_castling_rights(c, rights & KING_SIDE);
+                bool q_rights = make_castling_rights(c, rights & QUEEN_SIDE);
 
                 for (int violations = 0; violations <= 0x3f; violations++) {
 
@@ -107,7 +107,7 @@ void MoveList<Us, Them>::generate()
     for (Bitboard b = opponent_bishop_queen;  b; clear_lsb(b)) seen_by_enemy |= bishop_attacks(bsf(b), occupied ^ pos.bb(FriendlyKing));
     for (Bitboard b = opponent_rook_queen;    b; clear_lsb(b)) seen_by_enemy |= rook_attacks  (bsf(b), occupied ^ pos.bb(FriendlyKing));
 
-    Square ksq = bsf(pos.bb(FriendlyKing));
+    Square ksq = pos.king_sq<Us>();
 
     Bitboard checkmask = knight_attacks(ksq) & pos.bb(OpponentKnight) | pawn_attacks<Us>(ksq) & pos.bb(OpponentPawn);
 
@@ -265,7 +265,7 @@ CaptureList<Us, Them>::CaptureList(const Position& p) : pos(p)
     }
 
     Bitboard bishop_queen = pos.bb(FriendlyBishop) | pos.bb(FriendlyQueen);
-    Bitboard rook_queen   = pos.bb(FriendlyRook)   | pos.bb(FriendlyQueen);
+    Bitboard rook_queen   = pos.bb(FriendlyRook) | pos.bb(FriendlyQueen);
 
     for (Bitboard b = bishop_queen & ~pinned; b; clear_lsb(b)) {
         Square from = bsf(b);
