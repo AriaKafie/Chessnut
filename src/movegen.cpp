@@ -116,7 +116,6 @@ void MoveList<Us, Them>::generate()
 
     if (more_than_one(checkmask & double_check(ksq))) {
         last = make_moves(last, ksq, king_attacks(ksq) & ~(seen_by_enemy | pos.bb(Us)));
-        *last = NULLMOVE;
         return;
     }
 
@@ -194,8 +193,6 @@ void MoveList<Us, Them>::generate()
 
     last = make_moves(last, ksq, king_attacks(ksq) & ~(seen_by_enemy | pos.bb(Us)));
     last = make_castling<Us>(last, pos, occupied, seen_by_enemy);
-
-    *last = NULLMOVE;
 }
 
 template void MoveList<WHITE>::generate();

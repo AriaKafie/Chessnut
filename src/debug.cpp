@@ -191,7 +191,7 @@ void load_tt(std::istringstream& args) {
 }
 
 static void go() {
-    std::cout << "nonfunctional_changes" << std::endl;
+    std::cout << "no_nullterminate" << std::endl;
 }
 
 void Debug::go() {::go();}

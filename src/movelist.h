@@ -35,6 +35,7 @@ public:
 private:
     void generate();
     void sort();
+    Move next();
     
     EMove           moves[MAX_MOVES];
     EMove*          last = moves;
@@ -70,24 +71,29 @@ MoveList<Us, Them>::MoveList(const Position& p,
 }
 
 template<Color Us, Color Them>
+Move MoveList<Us, Them>::next() {
+    return cur < last ? *cur++ : NULLMOVE;
+}
+
+template<Color Us, Color Them>
 Move MoveList<Us, Them>::next_move() {
 
     switch (stage) {
 
     case TT:
         stage++;
-        return *cur++;
+        return next();
 
     case GENERATE:
         stage++;
         last = moves;
         generate();
         sort();
-        return *cur++;
+        return next();
 
     case GENERATED:
     default:
-        return *cur++;
+        return next();
     }
 }
 
