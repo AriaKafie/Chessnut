@@ -24,11 +24,13 @@ static struct {
     bool          verbose;
 } status;
 
-void Search::noverbose() { status.verbose = false; }
+void Search::set_verbose(bool b) {
+    status.verbose = b;
+}
 
 void Search::init() {
 
-    status.verbose = true;
+    set_verbose(true);
 
     for (int i = 0; i < MAX_PLIES; i++)
         reductions[i] = int(2954 / 128.0 * std::log(i));

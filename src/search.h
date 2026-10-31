@@ -20,7 +20,7 @@ inline uint64_t unix_ms() {
 }
 
 namespace Search {
-    void noverbose();
+    void set_verbose(bool b);
     void init();
     void go(Position pos, uint64_t thinktime = 0);
     void count_nodes(int depth);

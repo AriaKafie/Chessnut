@@ -58,6 +58,24 @@ void go(const Position& pos, std::istringstream& is) {
     }
 }
 
+void setoption(std::istringstream& is) {
+    
+    std::string token;
+    std::string name;
+    std::string value;
+
+    is >> token;
+
+    while (is >> token && token != "value")
+        name += (name.empty() ? "" : " ") + token;
+
+    while (is >> token)
+        value += (value.empty() ? "" : " ") + token;
+
+    if (name == "Verbose")
+        Search::set_verbose(value == "true");
+}
+
 void UCI::loop()
 {
     Position pos(STARTPOS);
@@ -73,6 +91,7 @@ void UCI::loop()
 
         if      (token == "uci")     std::cout << "id name Chessnut\n"
                                                << "id author Aria Kafie\n"
+                                               << "option name Verbose type check default true"
                                                << "uciok"         << std::endl;
         else if (token == "isready") std::cout << "readyok"       << std::endl;
         else if (token == "d")       std::cout << pos.to_string() << std::endl;
@@ -92,7 +111,7 @@ void UCI::loop()
         else if (token == "debug")     Debug::go();
         else if (token == "save")      save_tt();
         else if (token == "load")      load_tt(is);
-        else if (token == "noverbose") Search::noverbose();
+        else if (token == "setoption") setoption(is);
         else if (token == "moves")
             for (Move m; is >> token && (m = uci_to_move(pos, token)); pos.commit_move(m));
         
