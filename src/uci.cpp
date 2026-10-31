@@ -120,13 +120,16 @@ void UCI::loop()
 
 Move uci_to_move(const Position& pos, const std::string& uci) {
 
-    for (EMove moves[MAX_MOVES], *m = pos.white_to_move()
-        ? (EMove*)memcpy(moves, MoveList<WHITE>(pos).begin(), sizeof(EMove) * MAX_MOVES)
-        : (EMove*)memcpy(moves, MoveList<BLACK>(pos).begin(), sizeof(EMove) * MAX_MOVES); *m; m++) {
-         
-        if (move_to_uci(*m) == uci)
-            return *m;
-    }
-
-    return NULLMOVE;
+#define utm(C, P, U)                 \
+    [&]() {                          \
+        MoveList<C> ml(P);           \
+        for (Move m : ml)            \
+            if (move_to_uci(m) == U) \
+                return m;            \
+        return NULLMOVE;             \
+    }()
+    
+    return pos.white_to_move() ? utm(WHITE, pos, uci)
+                               : utm(BLACK, pos, uci);
+#undef utm
 }
