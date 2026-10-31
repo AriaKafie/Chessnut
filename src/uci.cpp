@@ -91,7 +91,7 @@ void UCI::loop()
 
         if      (token == "uci")     std::cout << "id name Chessnut\n"
                                                << "id author Aria Kafie\n"
-                                               << "option name Verbose type check default true"
+                                               << "option name Verbose type check default true\n"
                                                << "uciok"         << std::endl;
         else if (token == "isready") std::cout << "readyok"       << std::endl;
         else if (token == "d")       std::cout << pos.to_string() << std::endl;
