@@ -46,9 +46,9 @@ EMove* make_castling(EMove* list, const Position& pos, Bitboard occupied, Bitboa
 
     constexpr int Shift = Us == WHITE ? 1 : 57;
     constexpr Bitboard NoOcc = Us == WHITE ? square_bb(B1, C1, D1, F1, G1) : square_bb(B8, C8, D8, F8, G8);
-    constexpr Bitboard NoAtk = Us == WHITE ? square_bb(C1, D1, E1, F1, G1) : square_bb(C8, D8, E8, F8, G8);
+    constexpr Bitboard NoThr = Us == WHITE ? square_bb(C1, D1, E1, F1, G1) : square_bb(C8, D8, E8, F8, G8);
 
-    memcpy(list, &lut[Us][pos.castling_rights()][(NoOcc & occupied | NoAtk & threats) >> Shift], 8);
+    memcpy(list, &lut[Us][pos.castling_rights()][(NoOcc & occupied | NoThr & threats) >> Shift], 8);
     return list + popcount(*(uint64_t*)list & 0x100000001000);
 }
 

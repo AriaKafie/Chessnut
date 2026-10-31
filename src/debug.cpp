@@ -187,7 +187,7 @@ void load_tt(std::istringstream& args) {
 }
 
 static void go() {
-    std::cout << "limit_pv_depth" << std::endl;
+    std::cout << "setoption_verbose" << std::endl;
 }
 
 void Debug::go() {::go();}
