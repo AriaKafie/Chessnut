@@ -120,16 +120,16 @@ void UCI::loop()
 
 Move uci_to_move(const Position& pos, const std::string& uci) {
 
-#define utm(C, P, U)                 \
-    [&]() {                          \
-        MoveList<C> ml(P);           \
-        for (Move m : ml)            \
-            if (move_to_uci(m) == U) \
-                return m;            \
-        return NULLMOVE;             \
+#define utm(C)                         \
+    [&]() {                            \
+        MoveList<C> ml(pos);           \
+        for (Move m : ml)              \
+            if (move_to_uci(m) == uci) \
+                return m;              \
+        return NULLMOVE;               \
     }()
     
-    return pos.white_to_move() ? utm(WHITE, pos, uci)
-                               : utm(BLACK, pos, uci);
+    return pos.white_to_move() ? utm(WHITE)
+                               : utm(BLACK);
 #undef utm
 }
