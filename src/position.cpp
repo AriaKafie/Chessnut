@@ -91,24 +91,34 @@ void Position::set(const std::string& fen) {
 
 std::string Position::to_string() const {
 
-    std::stringstream ss;
+    std::ostringstream os;
 
     for (Rank r = RANK_8; r >= RANK_1; r--) {
 
-        ss << "\n+---+---+---+---+---+---+---+---+\n";
+        os << "\n+---+---+---+---+---+---+---+---+\n";
 
         for (File f = FILE_A; f >= FILE_H; f--)
-            ss << "| " << "  PNBRQK  pnbrqk"[board[make_square(r, f)]] << " ";
+            os << "| " << "  PNBRQK  pnbrqk"[board[make_square(r, f)]] << " ";
 
-        ss << "| " << r + 1;
+        os << "| " << r + 1;
     }
 
-    ss << "\n+---+---+---+---+---+---+---+---+\n"
+    os << "\n+---+---+---+---+---+---+---+---+\n"
        << "  a   b   c   d   e   f   g   h\n\n"
        << "Fen: " << fen() << "\n"
-       << "Key: " << std::setw(16) << std::setfill('0') << std::hex << std::uppercase << key() << "\n";
+       << "Key: " << std::setw(16) << std::setfill('0') << std::hex << std::uppercase << key() << "\n\n";
 
-    return ss.str();
+    std::string s = "+------------------+------+----+\n";
+
+    os << s << "| key              | loc  |  # |\n" << s;
+
+    for (int i = 0; i < RT_SIZE; i++)
+        if (RTEntry& ri = repetition_table[i]; ri.occurrences)
+            os << "| " << std::setw(16) << std::setfill('0') << std::hex << std::uppercase << ri.key
+               << " | " << std::setw(4) << std::setfill('0') << std::hex << std::uppercase << i
+               << " | " << std::setw(2) << std::setfill(' ') << std::dec << (int(ri.occurrences)) << " |\n";
+
+    return os.str() + s;
 }
 
 void Position::do_null_move() {

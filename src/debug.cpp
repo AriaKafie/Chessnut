@@ -21,9 +21,9 @@
 #include "uci.h"
 
 template<Color STM>
-static std::string pv(Position& pos)
+static std::string pv(Position& pos, int ply)
 {
-    if (pos.is_repetition())
+    if (pos.is_repetition() || ply > MAX_DEPTH)
         return "";
 
     std::string line;
@@ -37,7 +37,7 @@ static std::string pv(Position& pos)
 
     else {
         pos.do_move<STM>(best);
-        line = move_to_uci(best) + " " + pv<!STM>(pos);
+        line = move_to_uci(best) + " " + pv<!STM>(pos, ply + 1);
         pos.undo_move<STM>(best);
     }
 
@@ -45,8 +45,8 @@ static std::string pv(Position& pos)
 }
 
 std::string Debug::pv(Position& pos) {
-    return pos.white_to_move() ? ::pv<WHITE>(pos)
-                               : ::pv<BLACK>(pos);
+    return pos.white_to_move() ? ::pv<WHITE>(pos, 0)
+                               : ::pv<BLACK>(pos, 0);
 }
 
 template<bool Root, Color SideToMove>
@@ -132,13 +132,9 @@ Nodes/second   : %llu)""\n\n",
     }
 }
 
-void save_tt(std::istringstream& args) {
+void save_tt(const std::string& filename) {
 
     extern TTEntry transposition_table[TT_SIZE];
-
-    std::string filename = "tt.bin";
-    if (!args.eof())
-        args >> filename;
 
     std::ofstream fs(filename, std::ios::binary | std::ios::trunc);
     if (!fs) {
@@ -191,7 +187,7 @@ void load_tt(std::istringstream& args) {
 }
 
 static void go() {
-    std::cout << "no_nullterminate" << std::endl;
+    std::cout << "limit_pv_depth" << std::endl;
 }
 
 void Debug::go() {::go();}

@@ -7,9 +7,9 @@
 #include <vector>
 
 #include "position.h"
-#include "types.h",
+#include "types.h"
 
-void save_tt(std::istringstream& args);
+void save_tt(const std::string& filename = "tt.bin");
 void load_tt(std::istringstream& args);
 
 namespace Debug {
