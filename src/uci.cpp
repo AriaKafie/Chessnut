@@ -30,10 +30,8 @@ void position(Position& pos, std::istringstream& is) {
 
 void go(const Position& pos, std::istringstream& is) {
 
-    if ((is >> std::ws).eof()) { Search::go(pos); return; }
-
     std::string token;
-    is       >> token;
+    if (!(is >> token)) { Search::go(pos); return; }
 
     if (int movetime; token == "movetime" && is >> movetime)
         Search::go(pos, movetime);
@@ -43,18 +41,21 @@ void go(const Position& pos, std::istringstream& is) {
 
     else {
 
-        is.str(is.str()), is.clear();
+        is.str(is.str());
+        is.clear();
 
-        int wtime = 100, winc = 0, btime = 100, binc = 0;
+        uint64_t wtime = 10'000, winc = 100, btime = 10'000, binc = 100;
 
-        for (std::string token; is >> token;) {
+        while (is >> token) {
             if (token == "wtime") is >> wtime;
             if (token == "winc")  is >> winc;
             if (token == "btime") is >> btime;
             if (token == "binc")  is >> binc;
         }
 
-        Search::go(pos, pos.white_to_move() ? (wtime + winc) / 15 : (btime + binc) / 15);
+        uint64_t movetime = pos.white_to_move() ? wtime / 20 + winc / 2
+                                                : btime / 20 + binc / 2;
+        Search::go(pos, movetime);
     }
 }
 

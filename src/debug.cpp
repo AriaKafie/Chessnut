@@ -187,7 +187,7 @@ void load_tt(std::istringstream& args) {
 }
 
 static void go() {
-    std::cout << "setoption_verbose" << std::endl;
+    std::cout << "TimeManV2" << std::endl;
 }
 
 void Debug::go() {::go();}
