@@ -107,8 +107,7 @@ void MoveList<Us, Them>::generate()
     for (Bitboard b = opponent_bishop_queen;  b; clear_lsb(b)) seen_by_enemy |= bishop_attacks(bsf(b), occupied ^ pos.bb(FriendlyKing));
     for (Bitboard b = opponent_rook_queen;    b; clear_lsb(b)) seen_by_enemy |= rook_attacks  (bsf(b), occupied ^ pos.bb(FriendlyKing));
 
-    Square ksq = pos.king_sq<Us>();
-
+    Square   ksq       = pos.king_sq<Us>();
     Bitboard checkmask = pos.checkers<Us>();
 
     if (more_than_one(checkmask)) {

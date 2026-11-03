@@ -11,9 +11,9 @@
 #include "transpositiontable.h"
 #include "uci.h"
 
-template<Color SideToMove>
+template<Color STM>
 bool Position::legal(Move m) const {
-    return MoveList<SideToMove>(*this).contains(m);
+    return MoveList<STM>(*this).contains(m);
 } template bool Position::legal<WHITE>(Move) const;
   template bool Position::legal<BLACK>(Move) const;
 

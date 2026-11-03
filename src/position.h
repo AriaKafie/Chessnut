@@ -49,6 +49,7 @@ public:
     std::string to_string() const;
 
     Bitboard  bb(Piece pc) const;
+    Bitboard  bb(Color c, PieceType pt) const;
     Bitboard  occupied_bb() const;
     Piece     piece_on(Square sq) const;
     PieceType piece_type_on(Square sq) const;
@@ -64,12 +65,12 @@ public:
     bool      endgame() const;
     bool      mopup() const;
 
-    template<Color SideToMove>
+    template<Color STM>
     bool legal(Move m) const;
 
     bool is_capture(Move m) const;
     bool is_quiet(Move m) const;
-    template<Color SideToMove>
+    template<Color STM>
     Bitboard checkers() const;
     bool is_repetition() const;
     template<Color C>
@@ -128,6 +129,10 @@ inline Bitboard Position::bb(Piece pc) const {
     return bitboards[pc];
 }
 
+inline Bitboard Position::bb(Color c, PieceType pt) const {
+    return bitboards[make_piece(c, pt)];
+}
+
 inline Bitboard Position::occupied_bb() const {
     return bitboards[WHITE] | bitboards[BLACK];
 }
@@ -175,24 +180,16 @@ inline bool Position::is_quiet(Move m) const {
     return !piece_on(to_sq(m));
 }
 
-template<Color SideToMove>
+template<Color STM>
 Bitboard Position::checkers() const {
 
-    constexpr Color Them = !SideToMove;
-
-    constexpr Piece EnemyPawn   = make_piece(Them, PAWN);
-    constexpr Piece EnemyKnight = make_piece(Them, KNIGHT);
-    constexpr Piece EnemyBishop = make_piece(Them, BISHOP);
-    constexpr Piece EnemyRook   = make_piece(Them, ROOK);
-    constexpr Piece EnemyQueen  = make_piece(Them, QUEEN);
-
-    Square ksq = king_sq<SideToMove>();
+    Square ksq = king_sq<STM>();
 
     return
-        pawn_attacks<SideToMove>(ksq)      &  bb(EnemyPawn)
-      | knight_attacks(ksq)                &  bb(EnemyKnight)
-      | bishop_attacks(ksq, occupied_bb()) & (bb(EnemyQueen) | bb(EnemyBishop))
-      | rook_attacks  (ksq, occupied_bb()) & (bb(EnemyQueen) | bb(EnemyRook));
+        pawn_attacks<STM>(ksq)             &  bb(!STM, PAWN)
+      | knight_attacks(ksq)                &  bb(!STM, KNIGHT)
+      | bishop_attacks(ksq, occupied_bb()) & (bb(!STM, BISHOP) | bb(!STM, QUEEN))
+      | rook_attacks(ksq, occupied_bb())   & (bb(!STM, ROOK) | bb(!STM, QUEEN));
 }
 
 template<Color C>
