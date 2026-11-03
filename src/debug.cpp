@@ -187,7 +187,7 @@ void load_tt(std::istringstream& args) {
 }
 
 static void go() {
-    std::cout << "TimeManV2" << std::endl;
+    std::cout << "UnrollCMSK" << std::endl;
 }
 
 void Debug::go() {::go();}

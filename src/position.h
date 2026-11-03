@@ -70,7 +70,7 @@ public:
     bool is_capture(Move m) const;
     bool is_quiet(Move m) const;
     template<Color SideToMove>
-    bool in_check() const;
+    Bitboard checkers() const;
     bool is_repetition() const;
     template<Color C>
     Square king_sq() const;
@@ -176,7 +176,7 @@ inline bool Position::is_quiet(Move m) const {
 }
 
 template<Color SideToMove>
-bool Position::in_check() const {
+Bitboard Position::checkers() const {
 
     constexpr Color Them = !SideToMove;
 

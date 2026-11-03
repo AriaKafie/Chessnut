@@ -115,9 +115,12 @@ void Bitboards::init()
                                         rank_distance(s1, D5) + file_distance(s1, D5) });
 
         for (Square s2 = H1; s2 <= A8; s2++) {
+
+            BetweenBB[s1][s2] |= square_bb(s2);
+
             if (PieceType pt; attacks_bb(pt=BISHOP, s1, 0) & square_bb(s2) || attacks_bb(pt=ROOK, s1, 0) & square_bb(s2)) {
                 BetweenBB[s1][s2] = attacks_bb(pt, s1, square_bb(s2)) & attacks_bb(pt, s2, square_bb(s1)) | square_bb(s2);
-                AlignMask[s1][s2] = attacks_bb(pt, s1, 0)             & attacks_bb(pt, s2, 0)             | square_bb(s1, s2);
+                AlignMask[s1][s2] = attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0) | square_bb(s1, s2);
             }
         }
 
@@ -135,8 +138,6 @@ void Bitboards::init()
 
         KMagics[BLACK][s1].mask =
             ((rank_bb(sq + SOUTH) | rank_bb(sq + SOUTH*2)) & ~(mask(sq + WEST, WEST))) << std::clamp(s1 % 8 - 1, 0, 5) & mask(s1, SOUTH);
-
-        DoubleCheck[s1] = KingAttacks[s1] | KnightAttacks[s1];
 
         PawnAttacks[WHITE][s1] = pawn_attacks<WHITE>(square_bb(s1));
         PawnAttacks[BLACK][s1] = pawn_attacks<BLACK>(square_bb(s1));

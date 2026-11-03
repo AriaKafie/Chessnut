@@ -109,17 +109,14 @@ void MoveList<Us, Them>::generate()
 
     Square ksq = pos.king_sq<Us>();
 
-    Bitboard checkmask = knight_attacks(ksq) & pos.bb(OpponentKnight) | pawn_attacks<Us>(ksq) & pos.bb(OpponentPawn);
+    Bitboard checkmask = pos.checkers<Us>();
 
-    for (Bitboard checkers = bishop_attacks(ksq, occupied) & opponent_bishop_queen | rook_attacks(ksq, occupied) & opponent_rook_queen; checkers; clear_lsb(checkers))
-        checkmask |= between_bb(ksq, bsf(checkers));
-
-    if (more_than_one(checkmask & double_check(ksq))) {
+    if (more_than_one(checkmask)) {
         last = make_moves(last, ksq, king_attacks(ksq) & ~(seen_by_enemy | pos.bb(Us)));
         return;
     }
 
-    checkmask |= -!checkmask;
+    checkmask = checkmask ? between_bb(ksq, bsf(checkmask)) : -1ULL;
 
     Bitboard pinned = 0;
 
@@ -225,17 +222,14 @@ CaptureList<Us, Them>::CaptureList(const Position& p) : pos(p)
     for (Bitboard b = opponent_bishop_queen;  b; clear_lsb(b)) seen_by_enemy |= bishop_attacks(bsf(b), occupied ^ square_bb(ksq));
     for (Bitboard b = opponent_rook_queen;    b; clear_lsb(b)) seen_by_enemy |= rook_attacks  (bsf(b), occupied ^ square_bb(ksq));
 
-    Bitboard checkmask = knight_attacks(ksq) & pos.bb(OpponentKnight) | pawn_attacks<Us>(ksq) & pos.bb(OpponentPawn);
+    Bitboard checkmask = pos.checkers<Us>();
 
-    for (Bitboard checkers = bishop_attacks(ksq, occupied) & opponent_bishop_queen | rook_attacks(ksq, occupied) & opponent_rook_queen; checkers; clear_lsb(checkers))
-        checkmask |= between_bb(ksq, bsf(checkers));
-
-    if (more_than_one(checkmask & double_check(ksq))) {
+    if (more_than_one(checkmask)) {
         last = make_moves(last, ksq, king_attacks(ksq) & pos.bb(Them) & ~seen_by_enemy);
         return;
     }
 
-    checkmask = (checkmask | -!checkmask) & pos.bb(Them);
+    checkmask = (checkmask ? between_bb(ksq, bsf(checkmask)) : -1ULL) & pos.bb(Them);
 
     Bitboard pinned = 0;
 

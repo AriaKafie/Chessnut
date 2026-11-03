@@ -116,7 +116,7 @@ int search(Position& pos, int alpha, int beta, int depth, bool null_ok, SearchIn
         return lookup;
 
     si->static_ev = static_eval<SideToMove>(pos);
-    bool in_check = pos.in_check<SideToMove>();
+    bool in_check = pos.checkers<SideToMove>();
 
     if (null_ok && pos.midgame() && depth >= 3 && !in_check)
     {

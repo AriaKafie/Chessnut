@@ -79,7 +79,6 @@ inline Bitboard pext_table[0x1a480];
     inline Bitboard xray_table[0x1a480];
 #endif
 
-inline Bitboard DoubleCheck[SQUARE_NB];
 inline Bitboard KnightAttacks[SQUARE_NB];
 inline Bitboard KingAttacks[SQUARE_NB];
 inline Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
@@ -161,10 +160,6 @@ inline Bitboard anti_diag(Square sq) {
 
 inline Bitboard file_bb(Square sq) {
     return FileBB[sq];
-}
-
-inline Bitboard double_check(Square sq) {
-    return DoubleCheck[sq];
 }
 
 inline Bitboard between_bb(Square ksq, Square checker) {
