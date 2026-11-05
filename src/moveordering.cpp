@@ -49,7 +49,7 @@ void CaptureList<Us, Them>::sort()
         if (square_bb(to) & seen_by_pawn)
             score -= 500;
 
-        score += piece_weight(captured) - piece_weight(pt) * bool(square_bb(to) & seen_by_enemy);
+        score += piece_weight(captured) - piece_weight(pt) * bool(square_bb(to) & pos.threats<Us>());
 
         set_score(m, score);
     }
@@ -80,7 +80,7 @@ void MoveList<Us, Them>::sort() {
         {
             int material_delta = piece_weight(captured) - piece_weight(pt);
 
-            if (square_bb(to) & seen_by_enemy)
+            if (square_bb(to) & pos.threats<Us>())
                 score = (material_delta >= 0 ? GOOD_CAPTURE_BASE : BAD_CAPTURE_BASE) + material_delta;
             else
                 score = GOOD_CAPTURE_BASE + material_delta;

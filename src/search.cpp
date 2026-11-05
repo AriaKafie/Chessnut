@@ -71,6 +71,9 @@ int qsearch(Position& pos, int alpha, int beta)
 
     alpha = std::max(alpha, eval);
 
+    if (int lookup = TranspositionTable::lookup(pos.key(), 0, alpha, beta, 0); lookup != NO_EVAL)
+        return lookup;
+
     CaptureList<SideToMove> captures(pos);
 
     if (captures.size() == 0)
@@ -80,11 +83,9 @@ int qsearch(Position& pos, int alpha, int beta)
 
     for (Move move : captures)
     {
-        Piece captured = pos.piece_on(to_sq(move));
-
-        pos.do_qmove<SideToMove>(move);
+        pos.do_move<SideToMove>(move);
         eval = -qsearch<!SideToMove>(pos, -beta, -alpha);
-        pos.undo_qmove<SideToMove>(move, captured);
+        pos.undo_move<SideToMove>(move);
 
         if (eval >= beta)
             return eval;

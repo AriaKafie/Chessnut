@@ -6,7 +6,7 @@
 #include "position.h"
 
 template<Color Us>
-EMove* make_castling(EMove* list, const Position& pos, Bitboard occupied, Bitboard threats) {
+EMove* make_castling(EMove* list, const Position& pos, Bitboard occupied) {
 
     static constexpr auto lut = []() {
 
@@ -48,7 +48,7 @@ EMove* make_castling(EMove* list, const Position& pos, Bitboard occupied, Bitboa
     constexpr Bitboard NoOcc = Us == WHITE ? square_bb(B1, C1, D1, F1, G1) : square_bb(B8, C8, D8, F8, G8);
     constexpr Bitboard NoThr = Us == WHITE ? square_bb(C1, D1, E1, F1, G1) : square_bb(C8, D8, E8, F8, G8);
 
-    memcpy(list, &lut[Us][pos.castling_rights()][(NoOcc & occupied | NoThr & threats) >> Shift], 8);
+    memcpy(list, &lut[Us][pos.castling_rights()][(NoOcc & occupied | NoThr & pos.threats<Us>()) >> Shift], 8);
     return list + popcount(*(uint64_t*)list & 0x100000001000);
 }
 
@@ -101,17 +101,11 @@ void MoveList<Us, Them>::generate()
     Bitboard opponent_bishop_queen = pos.bb(OpponentQueen) | pos.bb(OpponentBishop);
     Bitboard occupied              = pos.occupied_bb();
 
-    seen_by_enemy = pawn_attacks<Them>(pos.bb(OpponentPawn)) | king_attacks(bsf(pos.bb(OpponentKing)));
-
-    for (Bitboard b = pos.bb(OpponentKnight); b; clear_lsb(b)) seen_by_enemy |= knight_attacks(bsf(b));
-    for (Bitboard b = opponent_bishop_queen;  b; clear_lsb(b)) seen_by_enemy |= bishop_attacks(bsf(b), occupied ^ pos.bb(FriendlyKing));
-    for (Bitboard b = opponent_rook_queen;    b; clear_lsb(b)) seen_by_enemy |= rook_attacks  (bsf(b), occupied ^ pos.bb(FriendlyKing));
-
     Square   ksq       = pos.king_sq<Us>();
     Bitboard checkmask = pos.checkers<Us>();
 
     if (more_than_one(checkmask)) {
-        last = make_moves(last, ksq, king_attacks(ksq) & ~(seen_by_enemy | pos.bb(Us)));
+        last = make_moves(last, ksq, king_attacks(ksq) & ~(pos.threats<Us>() | pos.bb(Us)));
         return;
     }
 
@@ -187,8 +181,8 @@ void MoveList<Us, Them>::generate()
         last = make_moves(last, from, rook_attacks(from, occupied) & legal & align_mask(ksq, from));
     }
 
-    last = make_moves(last, ksq, king_attacks(ksq) & ~(seen_by_enemy | pos.bb(Us)));
-    last = make_castling<Us>(last, pos, occupied, seen_by_enemy);
+    last = make_moves(last, ksq, king_attacks(ksq) & ~(pos.threats<Us>() | pos.bb(Us)));
+    last = make_castling<Us>(last, pos, occupied);
 }
 
 template void MoveList<WHITE>::generate();
@@ -215,34 +209,32 @@ CaptureList<Us, Them>::CaptureList(const Position& p) : pos(p)
     Square   ksq                   = bsf(pos.bb(FriendlyKing));
     Bitboard occupied              = pos.occupied_bb();
 
-    seen_by_enemy = pawn_attacks<Them>(pos.bb(OpponentPawn)) | king_attacks(bsf(pos.bb(OpponentKing)));
-
-    for (Bitboard b = pos.bb(OpponentKnight); b; clear_lsb(b)) seen_by_enemy |= knight_attacks(bsf(b));
-    for (Bitboard b = opponent_bishop_queen;  b; clear_lsb(b)) seen_by_enemy |= bishop_attacks(bsf(b), occupied ^ square_bb(ksq));
-    for (Bitboard b = opponent_rook_queen;    b; clear_lsb(b)) seen_by_enemy |= rook_attacks  (bsf(b), occupied ^ square_bb(ksq));
-
     Bitboard checkmask = pos.checkers<Us>();
 
     if (more_than_one(checkmask)) {
-        last = make_moves(last, ksq, king_attacks(ksq) & pos.bb(Them) & ~seen_by_enemy);
+        last = make_moves(last, ksq, king_attacks(ksq) & pos.bb(Them) & ~pos.threats<Us>());
         return;
     }
 
-    checkmask = (checkmask ? between_bb(ksq, bsf(checkmask)) : -1ULL) & pos.bb(Them);
+    checkmask = checkmask ? between_bb(ksq, bsf(checkmask)) : -1ULL;
 
     Bitboard pinned = 0;
 
     for (Bitboard pinners = bishop_xray(ksq, occupied) & opponent_bishop_queen | rook_xray(ksq, occupied) & opponent_rook_queen; pinners; clear_lsb(pinners))
         pinned |= between_bb(ksq, bsf(pinners));
 
+    constexpr Direction Up      = Us == WHITE ? NORTH      : SOUTH;
     constexpr Direction UpRight = Us == WHITE ? NORTH_EAST : SOUTH_WEST;
     constexpr Direction UpLeft  = Us == WHITE ? NORTH_WEST : SOUTH_EAST;
     constexpr Bitboard  Rank7   = Us == WHITE ? RANK_7BB   : RANK_2BB;
 
     if (Bitboard promotable = pos.bb(FriendlyPawn) & Rank7) {
-        last = make_pawn_moves<PROMOTION, UpRight>(last, shift<UpRight>(promotable & (~pinned | anti_diag(ksq))) & checkmask);
-        last = make_pawn_moves<PROMOTION, UpLeft >(last, shift<UpLeft >(promotable & (~pinned | main_diag(ksq))) & checkmask);
+        last = make_pawn_moves<PROMOTION, UpRight>(last, shift<UpRight>(promotable & (~pinned | anti_diag(ksq))) & pos.bb(Them) & checkmask);
+        last = make_pawn_moves<PROMOTION, UpLeft >(last, shift<UpLeft >(promotable & (~pinned | main_diag(ksq))) & pos.bb(Them) & checkmask);
+        last = make_pawn_moves<PROMOTION, Up     >(last, shift<Up     >(promotable &  ~pinned                  ) & ~occupied    & checkmask);
     }
+
+    checkmask &= pos.bb(Them);
 
     Bitboard pawns = pos.bb(FriendlyPawn) & ~Rank7;
 
@@ -277,7 +269,7 @@ CaptureList<Us, Them>::CaptureList(const Position& p) : pos(p)
         last = make_moves(last, from, rook_attacks(from, occupied) & checkmask & align_mask(ksq, from));
     }
 
-    last = make_moves(last, ksq, king_attacks(ksq) & pos.bb(Them) & ~seen_by_enemy);
+    last = make_moves(last, ksq, king_attacks(ksq) & pos.bb(Them) & ~pos.threats<Us>());
 }
 
 template CaptureList<WHITE>::CaptureList(const Position&);

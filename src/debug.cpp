@@ -187,7 +187,7 @@ void load_tt(std::istringstream& args) {
 }
 
 static void go() {
-    std::cout << "UnrollCMSK" << std::endl;
+    std::cout << "LazyThreatsQsearchTTPromos" << std::endl;
 }
 
 void Debug::go() {::go();}

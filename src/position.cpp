@@ -83,6 +83,9 @@ void Position::set(const std::string& fen) {
     state_ptr->key ^= Zobrist::castling[state_ptr->castling_rights];
     state_ptr->key ^= Zobrist::enpassant[state_ptr->ep_sq];
 
+    white_to_move() ? update_threats<WHITE>()
+                    : update_threats<BLACK>();
+
     rt_clear();
     rt_push();
 
@@ -123,7 +126,7 @@ std::string Position::to_string() const {
 
 void Position::do_null_move() {
 
-    memcpy(state_ptr + 1, state_ptr, sizeof(StateInfo));
+    memcpy(state_ptr + 1, state_ptr, offsetof(StateInfo, threats_bb));
     state_ptr++;
 
     state_ptr->captured = NO_PIECE;
@@ -132,6 +135,8 @@ void Position::do_null_move() {
 
     state_ptr->key ^= Zobrist::enpassant[state_ptr->ep_sq];
     state_ptr->ep_sq = 0;
+
+    state_ptr->threats_bb = 0;
 }
 
 void Position::undo_null_move() {

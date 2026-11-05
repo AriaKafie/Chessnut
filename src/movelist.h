@@ -42,7 +42,6 @@ private:
     EMove*          cur = moves;
     SearchInfo*     search_info;
     const Position& pos;
-    Bitboard        seen_by_enemy;
     Stage           stage;
     Move            ttmove;
 };
@@ -112,7 +111,6 @@ public:
 private:
     EMove           moves[MAX_CAPTURES], *last = moves;
     const Position& pos;
-    Bitboard        seen_by_enemy;
 };
 
 #endif
