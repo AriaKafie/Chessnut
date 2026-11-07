@@ -74,203 +74,115 @@ EMove* make_pawn_moves(EMove *list, Bitboard attacks) {
 }
 
 EMove* make_moves(EMove *list, Square from, Bitboard to) {
-
     for (;to; clear_lsb(to))
         *list++ = make_move(from, bsf(to));
-
     return list;
 }
 
-template<Color Us, Color Them>
-void MoveList<Us, Them>::generate()
-{
-    constexpr Piece FriendlyPawn   = make_piece(Us, PAWN);
-    constexpr Piece FriendlyKnight = make_piece(Us, KNIGHT);
-    constexpr Piece FriendlyBishop = make_piece(Us, BISHOP);
-    constexpr Piece FriendlyRook   = make_piece(Us, ROOK);
-    constexpr Piece FriendlyQueen  = make_piece(Us, QUEEN);
-    constexpr Piece FriendlyKing   = make_piece(Us, KING);
-    constexpr Piece OpponentPawn   = make_piece(Them, PAWN);
-    constexpr Piece OpponentKnight = make_piece(Them, KNIGHT);
-    constexpr Piece OpponentBishop = make_piece(Them, BISHOP);
-    constexpr Piece OpponentRook   = make_piece(Them, ROOK);
-    constexpr Piece OpponentQueen  = make_piece(Them, QUEEN);
-    constexpr Piece OpponentKing   = make_piece(Them, KING);
+template<Color Us, GenType Type>
+EMove* generate(const Position& pos, EMove *list) {
 
-    Bitboard opponent_rook_queen   = pos.bb(OpponentQueen) | pos.bb(OpponentRook);
-    Bitboard opponent_bishop_queen = pos.bb(OpponentQueen) | pos.bb(OpponentBishop);
-    Bitboard occupied              = pos.occupied_bb();
+    constexpr Color Them      = !Us;
+    const Square    ksq       = pos.king_sq<Us>();
+    Bitboard        checkmask = pos.checkers<Us>();
 
-    Square   ksq       = pos.king_sq<Us>();
-    Bitboard checkmask = pos.checkers<Us>();
-
-    if (more_than_one(checkmask)) {
-        last = make_moves(last, ksq, king_attacks(ksq) & ~(pos.threats<Us>() | pos.bb(Us)));
-        return;
-    }
+    if (more_than_one(checkmask))
+        return Type == ALL
+            ? make_moves(list, ksq, king_attacks(ksq) & ~(pos.threats<Us>() | pos.bb(Us)))
+            : make_moves(list, ksq, king_attacks(ksq) & pos.bb(Them) & ~pos.threats<Us>());
 
     checkmask = checkmask ? between_bb(ksq, bsf(checkmask)) : -1ULL;
 
     Bitboard pinned = 0;
 
-    for (Bitboard pinners = bishop_xray(ksq, occupied) & opponent_bishop_queen | rook_xray(ksq, occupied) & opponent_rook_queen; pinners; clear_lsb(pinners))
+    const Bitboard opponent_bq = pos.bb(Them, BISHOP) | pos.bb(Them, QUEEN);
+    const Bitboard opponent_rq = pos.bb(Them, ROOK) | pos.bb(Them, QUEEN);
+    const Bitboard occupied    = pos.occupied_bb();
+
+    for (Bitboard pinners = bishop_xray(ksq, occupied) & opponent_bq | rook_xray(ksq, occupied) & opponent_rq; pinners; clear_lsb(pinners))
         pinned |= between_bb(ksq, bsf(pinners));
 
     constexpr Direction Up      = Us == WHITE ? NORTH      : SOUTH;
     constexpr Direction UpRight = Us == WHITE ? NORTH_EAST : SOUTH_WEST;
     constexpr Direction UpLeft  = Us == WHITE ? NORTH_WEST : SOUTH_EAST;
-    constexpr Bitboard  Rank2   = Us == WHITE ? RANK_2BB   : RANK_7BB;
     constexpr Bitboard  Rank3   = Us == WHITE ? RANK_3BB   : RANK_6BB;
     constexpr Bitboard  Rank6   = Us == WHITE ? RANK_6BB   : RANK_3BB;
     constexpr Bitboard  Rank7   = Us == WHITE ? RANK_7BB   : RANK_2BB;
 
-    Bitboard empty = ~occupied;
-    Bitboard e     = shift<Up>(Rank3 & empty) & empty;
-    Bitboard pawns = pos.bb(FriendlyPawn) & ~Rank7;
-
-    last = make_pawn_moves<NORMAL, UpRight>(last, shift<UpRight>(pawns & (~pinned | anti_diag(ksq))) & pos.bb(Them) & checkmask);
-    last = make_pawn_moves<NORMAL, UpLeft >(last, shift<UpLeft >(pawns & (~pinned | main_diag(ksq))) & pos.bb(Them) & checkmask);
-    last = make_pawn_moves<NORMAL, Up     >(last, shift<Up     >(pawns & (~pinned | file_bb  (ksq))) & empty        & checkmask);
-    last = make_pawn_moves<NORMAL, Up*2   >(last, shift<Up*2   >(pawns & (~pinned | file_bb  (ksq))) & e            & checkmask);
-
-    if (Bitboard promotable = pos.bb(FriendlyPawn) & Rank7) {
-        last = make_pawn_moves<PROMOTION, UpRight>(last, shift<UpRight>(promotable & (~pinned | anti_diag(ksq))) & pos.bb(Them) & checkmask);
-        last = make_pawn_moves<PROMOTION, UpLeft >(last, shift<UpLeft >(promotable & (~pinned | main_diag(ksq))) & pos.bb(Them) & checkmask);
-        last = make_pawn_moves<PROMOTION, Up     >(last, shift<Up     >(promotable &  ~pinned                  ) & empty        & checkmask);
+    if (Bitboard promotable = pos.bb(Us, PAWN) & Rank7) {
+        list = make_pawn_moves<PROMOTION, UpRight>(list, shift<UpRight>(promotable & (~pinned | anti_diag(ksq))) & pos.bb(Them) & checkmask);
+        list = make_pawn_moves<PROMOTION, UpLeft >(list, shift<UpLeft >(promotable & (~pinned | main_diag(ksq))) & pos.bb(Them) & checkmask);
+        list = make_pawn_moves<PROMOTION, Up     >(list, shift<Up     >(promotable &  ~pinned                  ) & ~occupied    & checkmask);
     }
 
-    if (Bitboard b = shift<UpRight>(pos.bb(FriendlyPawn)) & pos.ep_bb() & Rank6) {
-        *last = make_move<ENPASSANT>(pos.ep_sq() - UpRight, pos.ep_sq());
-        Bitboard after_ep = occupied ^ (b | shift_unsafe<-UpRight>(b) | shift_unsafe<-Up>(b));
-        last += !(bishop_attacks(ksq, after_ep) & opponent_bishop_queen | rook_attacks(ksq, after_ep) & opponent_rook_queen);
+    const Bitboard pawns = pos.bb(Us, PAWN) & ~Rank7;
+
+    list = make_pawn_moves<NORMAL, UpRight>(list, shift<UpRight>(pawns & (~pinned | anti_diag(ksq))) & pos.bb(Them) & checkmask);
+    list = make_pawn_moves<NORMAL, UpLeft >(list, shift<UpLeft >(pawns & (~pinned | main_diag(ksq))) & pos.bb(Them) & checkmask);
+
+    if constexpr (Type == ALL) {
+        Bitboard push  = shift<Up>(pawns & (~pinned | file_bb(ksq))) & ~occupied;
+        Bitboard push2 = shift<Up>(push & Rank3) & ~occupied;
+        list = make_pawn_moves<NORMAL, Up  >(list, push  & checkmask);
+        list = make_pawn_moves<NORMAL, Up*2>(list, push2 & checkmask);
     }
 
-    if (Bitboard b = shift<UpLeft >(pos.bb(FriendlyPawn)) & pos.ep_bb() & Rank6) {
-        *last = make_move<ENPASSANT>(pos.ep_sq() - UpLeft, pos.ep_sq());
-        Bitboard after_ep = occupied ^ (b | shift_unsafe<-UpLeft>(b) | shift_unsafe<-Up>(b));
-        last += !(bishop_attacks(ksq, after_ep) & opponent_bishop_queen | rook_attacks(ksq, after_ep) & opponent_rook_queen);
+    if constexpr (Type == ALL) {
+        if (Bitboard b = shift<UpRight>(pos.bb(Us, PAWN)) & pos.ep_bb() & Rank6) {
+            *list = make_move<ENPASSANT>(pos.ep_sq() - UpRight, pos.ep_sq());
+            Bitboard after_ep = occupied ^ (b | shift_unsafe<-UpRight>(b) | shift_unsafe<-Up>(b));
+            list += !(bishop_attacks(ksq, after_ep) & opponent_bq | rook_attacks(ksq, after_ep) & opponent_rq);
+        }
+
+        if (Bitboard b = shift<UpLeft >(pos.bb(Us, PAWN)) & pos.ep_bb() & Rank6) {
+            *list = make_move<ENPASSANT>(pos.ep_sq() - UpLeft, pos.ep_sq());
+            Bitboard after_ep = occupied ^ (b | shift_unsafe<-UpLeft>(b) | shift_unsafe<-Up>(b));
+            list += !(bishop_attacks(ksq, after_ep) & opponent_bq | rook_attacks(ksq, after_ep) & opponent_rq);
+        }
     }
 
-    Bitboard legal = checkmask &~ pos.bb(Us);
+    const Bitboard target = checkmask & (
+        Type == CAPTURES ? pos.bb(Them) : ~pos.bb(Us)
+    );
 
-    for (Bitboard b = pos.bb(FriendlyKnight) & ~pinned; b; clear_lsb(b)) {
+    for (Bitboard b = pos.bb(Us, KNIGHT) & ~pinned; b; clear_lsb(b)) {
         Square from = bsf(b);
-        last = make_moves(last, from, knight_attacks(from) & legal);
+        list = make_moves(list, from, knight_attacks(from) & target);
     }
 
-    Bitboard bishop_queen = pos.bb(FriendlyBishop) | pos.bb(FriendlyQueen);
-    Bitboard rook_queen   = pos.bb(FriendlyRook) | pos.bb(FriendlyQueen);
+    const Bitboard bishop_queen = pos.bb(Us, BISHOP) | pos.bb(Us, QUEEN);
+    const Bitboard rook_queen   = pos.bb(Us, ROOK) | pos.bb(Us, QUEEN);
 
     for (Bitboard b = bishop_queen & ~pinned; b; clear_lsb(b)) {
         Square from = bsf(b);
-        last = make_moves(last, from, bishop_attacks(from, occupied) & legal);
+        list = make_moves(list, from, bishop_attacks(from, occupied) & target);
     }
 
     for (Bitboard b = bishop_queen & pinned; b; clear_lsb(b)) {
         Square from = bsf(b);
-        last = make_moves(last, from, bishop_attacks(from, occupied) & legal & align_mask(ksq, from));
+        list = make_moves(list, from, bishop_attacks(from, occupied) & target & align_mask(ksq, from));
     }
 
     for (Bitboard b = rook_queen & ~pinned; b; clear_lsb(b)) {
         Square from = bsf(b);
-        last = make_moves(last, from, rook_attacks(from, occupied) & legal);
+        list = make_moves(list, from, rook_attacks(from, occupied) & target);
     }
 
     for (Bitboard b = rook_queen & pinned; b; clear_lsb(b)) {
         Square from = bsf(b);
-        last = make_moves(last, from, rook_attacks(from, occupied) & legal & align_mask(ksq, from));
+        list = make_moves(list, from, rook_attacks(from, occupied) & target & align_mask(ksq, from));
     }
 
-    last = make_moves(last, ksq, king_attacks(ksq) & ~(pos.threats<Us>() | pos.bb(Us)));
-    last = make_castling<Us>(last, pos, occupied);
+    if constexpr (Type == CAPTURES)
+        return make_moves(list, ksq, king_attacks(ksq) & pos.bb(Them) & ~pos.threats<Us>());
+
+    list = make_moves(list, ksq, king_attacks(ksq) & ~(pos.threats<Us>() | pos.bb(Us)));
+    list = make_castling<Us>(list, pos, occupied);
+
+    return list;
 }
 
-template void MoveList<WHITE>::generate();
-template void MoveList<BLACK>::generate();
-
-template<Color Us, Color Them>
-CaptureList<Us, Them>::CaptureList(const Position& p) : pos(p)
-{
-    constexpr Piece FriendlyPawn   = make_piece(Us, PAWN);
-    constexpr Piece FriendlyKnight = make_piece(Us, KNIGHT);
-    constexpr Piece FriendlyBishop = make_piece(Us, BISHOP);
-    constexpr Piece FriendlyRook   = make_piece(Us, ROOK);
-    constexpr Piece FriendlyQueen  = make_piece(Us, QUEEN);
-    constexpr Piece FriendlyKing   = make_piece(Us, KING);
-    constexpr Piece OpponentPawn   = make_piece(Them, PAWN);
-    constexpr Piece OpponentKnight = make_piece(Them, KNIGHT);
-    constexpr Piece OpponentBishop = make_piece(Them, BISHOP);
-    constexpr Piece OpponentRook   = make_piece(Them, ROOK);
-    constexpr Piece OpponentQueen  = make_piece(Them, QUEEN);
-    constexpr Piece OpponentKing   = make_piece(Them, KING);
-
-    Bitboard opponent_rook_queen   = pos.bb(OpponentQueen) | pos.bb(OpponentRook);
-    Bitboard opponent_bishop_queen = pos.bb(OpponentQueen) | pos.bb(OpponentBishop);
-    Square   ksq                   = bsf(pos.bb(FriendlyKing));
-    Bitboard occupied              = pos.occupied_bb();
-
-    Bitboard checkmask = pos.checkers<Us>();
-
-    if (more_than_one(checkmask)) {
-        last = make_moves(last, ksq, king_attacks(ksq) & pos.bb(Them) & ~pos.threats<Us>());
-        return;
-    }
-
-    checkmask = checkmask ? between_bb(ksq, bsf(checkmask)) : -1ULL;
-
-    Bitboard pinned = 0;
-
-    for (Bitboard pinners = bishop_xray(ksq, occupied) & opponent_bishop_queen | rook_xray(ksq, occupied) & opponent_rook_queen; pinners; clear_lsb(pinners))
-        pinned |= between_bb(ksq, bsf(pinners));
-
-    constexpr Direction Up      = Us == WHITE ? NORTH      : SOUTH;
-    constexpr Direction UpRight = Us == WHITE ? NORTH_EAST : SOUTH_WEST;
-    constexpr Direction UpLeft  = Us == WHITE ? NORTH_WEST : SOUTH_EAST;
-    constexpr Bitboard  Rank7   = Us == WHITE ? RANK_7BB   : RANK_2BB;
-
-    if (Bitboard promotable = pos.bb(FriendlyPawn) & Rank7) {
-        last = make_pawn_moves<PROMOTION, UpRight>(last, shift<UpRight>(promotable & (~pinned | anti_diag(ksq))) & pos.bb(Them) & checkmask);
-        last = make_pawn_moves<PROMOTION, UpLeft >(last, shift<UpLeft >(promotable & (~pinned | main_diag(ksq))) & pos.bb(Them) & checkmask);
-        last = make_pawn_moves<PROMOTION, Up     >(last, shift<Up     >(promotable &  ~pinned                  ) & ~occupied    & checkmask);
-    }
-
-    checkmask &= pos.bb(Them);
-
-    Bitboard pawns = pos.bb(FriendlyPawn) & ~Rank7;
-
-    last = make_pawn_moves<NORMAL, UpRight>(last, shift<UpRight>(pawns & (~pinned | anti_diag(ksq))) & checkmask);
-    last = make_pawn_moves<NORMAL, UpLeft >(last, shift<UpLeft >(pawns & (~pinned | main_diag(ksq))) & checkmask);
-
-    for (Bitboard b = pos.bb(FriendlyKnight) & ~pinned; b; clear_lsb(b)) {
-        Square from = bsf(b);
-        last = make_moves(last, from, knight_attacks(from) & checkmask);
-    }
-
-    Bitboard bishop_queen = pos.bb(FriendlyBishop) | pos.bb(FriendlyQueen);
-    Bitboard rook_queen   = pos.bb(FriendlyRook) | pos.bb(FriendlyQueen);
-
-    for (Bitboard b = bishop_queen & ~pinned; b; clear_lsb(b)) {
-        Square from = bsf(b);
-        last = make_moves(last, from, bishop_attacks(from, occupied) & checkmask);
-    }
-
-    for (Bitboard b = bishop_queen & pinned; b; clear_lsb(b)) {
-        Square from = bsf(b);
-        last = make_moves(last, from, bishop_attacks(from, occupied) & checkmask & align_mask(ksq, from));
-    }
-
-    for (Bitboard b = rook_queen & ~pinned; b; clear_lsb(b)) {
-        Square from = bsf(b);
-        last = make_moves(last, from, rook_attacks(from, occupied) & checkmask);
-    }
-
-    for (Bitboard b = rook_queen & pinned; b; clear_lsb(b)) {
-        Square from = bsf(b);
-        last = make_moves(last, from, rook_attacks(from, occupied) & checkmask & align_mask(ksq, from));
-    }
-
-    last = make_moves(last, ksq, king_attacks(ksq) & pos.bb(Them) & ~pos.threats<Us>());
-}
-
-template CaptureList<WHITE>::CaptureList(const Position&);
-template CaptureList<BLACK>::CaptureList(const Position&);
+template EMove* generate<WHITE, ALL>(const Position&, EMove*);
+template EMove* generate<WHITE, CAPTURES>(const Position&, EMove*);
+template EMove* generate<BLACK, ALL>(const Position&, EMove*);
+template EMove* generate<BLACK, CAPTURES>(const Position&, EMove*);

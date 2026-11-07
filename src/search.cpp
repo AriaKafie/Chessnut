@@ -74,7 +74,7 @@ int qsearch(Position& pos, int alpha, int beta)
     if (int lookup = TranspositionTable::lookup(pos.key(), 0, alpha, beta, 0); lookup != NO_EVAL)
         return lookup;
 
-    CaptureList<SideToMove> captures(pos);
+    MoveList<SideToMove, CAPTURES> captures(pos);
 
     if (captures.size() == 0)
         return eval;

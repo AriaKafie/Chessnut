@@ -8,20 +8,47 @@
 #include "search.h"
 #include "types.h"
 
-typedef int Stage;
-enum Stages {
+enum {
     TT, GENERATE, GENERATED
-};
+}; typedef int Stage;
 
-const int MAX_MOVES    = 128;
-const int MAX_CAPTURES = 32;
+enum {
+    ALL, CAPTURES
+}; typedef int GenType;
 
-template<Color Us, Color Them = !Us>
+constexpr int MAX_MOVES    = 128;
+constexpr int MAX_CAPTURES = 32;
+
+template<Color, GenType>
+EMove* generate(const Position& pos, EMove* list);
+
+//template<GenType Type>
+//struct ListInfo {
+//    EMove*      cur;
+//    SearchInfo* search_info;
+//    Stage       stage;
+//    Move        ttmove;
+//};
+//
+//template<>
+//struct ListInfo<CAPTURES> {};
+//
+//template<GenType Type>
+//class test {
+//    EMove moves[32];
+//    EMove *last;
+//    const Position& pos;
+//    ListInfo<Type> info;
+//};
+
+template<Color Us, GenType Type = ALL>
 class MoveList {
 
 public:
     MoveList() = delete;
-    MoveList(const Position& p);
+    MoveList(const Position& p) :
+        pos(p),
+        last(generate<Us, Type>(pos, moves)) {}
     MoveList(const Position& p,
              Move            ttm,
              SearchInfo*     si);
@@ -31,30 +58,26 @@ public:
     EMove* end() { return last; }
     size_t size() const { return last - moves; }
     bool   contains(Move m) { return std::find(begin(), end(), m) != end(); }
+    void   sort();
 
 private:
-    void generate();
-    void sort();
     Move next();
     
-    EMove           moves[MAX_MOVES];
-    EMove*          last = moves;
-    EMove*          cur = moves;
-    SearchInfo*     search_info;
     const Position& pos;
+    EMove           moves[Type == ALL ? MAX_MOVES : MAX_CAPTURES];
+    EMove*          last;
+    EMove*          cur;
+    SearchInfo*     search_info;
     Stage           stage;
     Move            ttmove;
 };
 
-template<Color Us, Color Them>
-MoveList<Us, Them>::MoveList(const Position& p) : pos(p) {
-    generate();
-}
-
-template<Color Us, Color Them>
-MoveList<Us, Them>::MoveList(const Position& p,
+template<Color Us, GenType Type>
+MoveList<Us, Type>::MoveList(const Position& p,
                              Move            ttm,
                              SearchInfo*     si) :
+    last(moves),
+    cur(moves),
     pos(p),
     ttmove(ttm),
     search_info(si) {
@@ -63,19 +86,19 @@ MoveList<Us, Them>::MoveList(const Position& p,
         *last++ = ttmove;
         stage = TT;
     } else {
-        generate();
+        last = generate<Us, Type>(pos, moves);
         sort();
         stage = GENERATED;
     }
 }
 
-template<Color Us, Color Them>
-Move MoveList<Us, Them>::next() {
+template<Color Us, GenType Type>
+Move MoveList<Us, Type>::next() {
     return cur < last ? *cur++ : NULLMOVE;
 }
 
-template<Color Us, Color Them>
-Move MoveList<Us, Them>::next_move() {
+template<Color Us, GenType Type>
+Move MoveList<Us, Type>::next_move() {
 
     switch (stage) {
 
@@ -85,8 +108,7 @@ Move MoveList<Us, Them>::next_move() {
 
     case GENERATE:
         stage++;
-        last = moves;
-        generate();
+        last = generate<Us, Type>(pos, moves);
         sort();
         return next();
 
@@ -95,22 +117,5 @@ Move MoveList<Us, Them>::next_move() {
         return next();
     }
 }
-
-template<Color Us, Color Them = !Us>
-class CaptureList {
-
-public:
-    CaptureList() = delete;
-    CaptureList(const Position& p);
-
-    EMove* begin() { return moves; }
-    EMove* end() { return last; }
-    size_t size() const { return last - moves; }
-    void   sort();
-
-private:
-    EMove           moves[MAX_CAPTURES], *last = moves;
-    const Position& pos;
-};
 
 #endif

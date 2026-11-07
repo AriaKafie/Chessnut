@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <vector>
 #include <random>
+
 #include <thread>
 
 #include "evaluation.h"
@@ -77,10 +78,10 @@ uint64_t PerfT(Position& pos, int depth)
     return nodes;
 }
 
-void Debug::perft(Position pos, std::istringstream& is)
-{
-    if (int depth; is >> depth)
-    {
+void Debug::perft(Position pos, std::istringstream& is) {
+
+    if (int depth; is >> depth) {
+
         auto start = std::chrono::steady_clock::now();
         uint64_t result = pos.white_to_move() ? PerfT<true, WHITE>(pos, depth)
                                               : PerfT<true, BLACK>(pos, depth);
@@ -96,36 +97,45 @@ Total time (s) : %.3f
 Nodes searched : %llu
 Nodes/second   : %llu)""\n\n",
         result, elapsed, result, uint64_t(result / elapsed));
-    }
-    else
-    {
-        std::string        line, token;
-        std::istringstream suite(perft_suite);
+
+    } else {
+
         bool               failed = false;
+        std::string        line;
+        std::istringstream suite(perft_suite);
 
-        while (std::getline(suite, line))
-        {
-            pos.set(line.substr(0, line.find(';')));
+        while (std::getline(suite, line)) {
+        
+            std::string        token;
+            std::string        fen;
+            std::istringstream is(line);
 
-            std::istringstream is(line.substr(line.find(';')));
+            while (is >> token && token[0] != ';')
+                fen += token + " ";
 
-            for (uint64_t depth = is.str()[2] - '0', expected; is >> token >> expected; depth++)
+            pos.set(fen);
+
+            uint64_t expected;
+            is >> expected;
+
+            std::cout << fen << std::endl;
+
+            do
             {
-                std::cout << "Perft " << depth << " " << pos.fen() << std::endl;
+                int depth = std::stoi(token.substr(2));
+                std::cout << "Depth " << depth << "... " << std::flush;
 
-                uint64_t result = pos.white_to_move() ? PerfT<false, WHITE>(pos, depth)
+                uint64_t actual = pos.white_to_move() ? PerfT<false, WHITE>(pos, depth)
                                                       : PerfT<false, BLACK>(pos, depth);
-
-                if (result != expected)
-                {
+                if (actual == expected) {
+                    std::cout << "OK\n";
+                } else {
                     failed = true;
-                    std::cout << "ERROR\n" << std::endl;
-                    break;
+                    std::cout << "ERROR\n";
                 }
+            } while (is >> token >> expected);
 
-                if (is.eof())
-                    std::cout << "OK\n" << std::endl;
-            }
+            std::cout << std::endl;
         }
 
         std::cout << (failed ? "FAILED\n" : "ALL OK\n") << std::endl;
@@ -187,7 +197,7 @@ void load_tt(std::istringstream& args) {
 }
 
 static void go() {
-    std::cout << "LazyThreatsQsearchTTPromos" << std::endl;
+    std::cout << "ConsolidateMListV4: Promotions first unconditionally (300162154)" << std::endl;
 }
 
 void Debug::go() {::go();}

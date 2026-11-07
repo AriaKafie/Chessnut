@@ -195,6 +195,10 @@ constexpr MoveType type_of(Move m) {
     return m & 0x3000;
 }
 
+constexpr bool is_promotion(Move m) {
+    return type_of(m) == PROMOTION;
+}
+
 constexpr PieceType promotion_type_of(Move m) {
     return (m >> 14) + KNIGHT;
 }

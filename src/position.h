@@ -263,15 +263,14 @@ void Position::do_move(Move m)
     state_ptr->key ^= Zobrist::enpassant[state_ptr->ep_sq];
     state_ptr->ep_sq = 0;
 
-    if (Square ep_candidate = from + Up;
+    if (Square ep = from + Up;
         pc == Pawn
         && (to - from) == Up*2
-        && (pawn_attacks<Us>(ep_candidate) & bb(Them, PAWN))) {
+        && (pawn_attacks<Us>(ep) & bb(Them, PAWN))) {
         
-        state_ptr->ep_sq = ep_candidate;
+        state_ptr->ep_sq = ep;
+        state_ptr->key ^= Zobrist::enpassant[ep];
     }
-
-    state_ptr->key ^= Zobrist::enpassant[state_ptr->ep_sq];
 
     state_ptr->threats_bb = 0;
 
