@@ -11,11 +11,10 @@
 #include <algorithm>
 #include <vector>
 #include <random>
-
 #include <thread>
 
 #include "evaluation.h"
-#include "movelist.h"
+#include "movegen.h"
 #include "position.h"
 #include "transpositiontable.h"
 #include "search.h"
@@ -197,7 +196,7 @@ void load_tt(std::istringstream& args) {
 }
 
 static void go() {
-    std::cout << "ConsolidateMListV4: Promotions first unconditionally (300162154)" << std::endl;
+    std::cout << "ep_movelist_refactor (294884789)" << std::endl;
 }
 
 void Debug::go() {::go();}

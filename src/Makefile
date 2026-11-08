@@ -1,5 +1,5 @@
 
-HEADERS = bitboard.h debug.h evaluation.h movelist.h position.h search.h transpositiontable.h types.h uci.h
+HEADERS = bitboard.h debug.h evaluation.h movegen.h position.h search.h transpositiontable.h types.h uci.h
 
 FLAGS = -fpermissive -std=c++17 -march=native -w -O3 -c
 

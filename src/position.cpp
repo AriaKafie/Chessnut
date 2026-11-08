@@ -7,7 +7,7 @@
 #include <sstream>
 
 #include "evaluation.h"
-#include "movelist.h"
+#include "movegen.h"
 #include "transpositiontable.h"
 #include "uci.h"
 

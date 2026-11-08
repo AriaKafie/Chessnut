@@ -2,7 +2,7 @@
 #include <array>
 
 #include "bitboard.h"
-#include "movelist.h"
+#include "movegen.h"
 #include "position.h"
 
 template<Color Us>
@@ -52,21 +52,23 @@ EMove* make_castling(EMove* list, const Position& pos, Bitboard occupied) {
     return list + popcount(*(uint64_t*)list & 0x100000001000);
 }
 
-template<MoveType Type, Direction D>
+template<MoveType MoveT, Direction D, GenType GenT = ALL>
 EMove* make_pawn_moves(EMove *list, Bitboard attacks) {
 
     for (;attacks; clear_lsb(attacks)) {
 
         Square to = bsf(attacks);
 
-        if constexpr (Type == NORMAL)
+        if constexpr (MoveT == NORMAL)
             *list++ = make_move(to - D, to);
 
-        else if constexpr (Type == PROMOTION) {
-            *list++ = make_move<KNIGHT_PROMOTION>(to - D, to);
-            *list++ = make_move<BISHOP_PROMOTION>(to - D, to);
-            *list++ = make_move<ROOK_PROMOTION  >(to - D, to);
-            *list++ = make_move<QUEEN_PROMOTION >(to - D, to);
+        else if constexpr (MoveT == PROMOTION) {
+            *list++ = make_move<QUEEN_PROMOTION>(to - D, to);
+            if constexpr (GenT == ALL) {
+                *list++ = make_move<KNIGHT_PROMOTION>(to - D, to);
+                *list++ = make_move<ROOK_PROMOTION  >(to - D, to);
+                *list++ = make_move<BISHOP_PROMOTION>(to - D, to);
+            }
         }
     }
 
@@ -79,7 +81,7 @@ EMove* make_moves(EMove *list, Square from, Bitboard to) {
     return list;
 }
 
-template<Color Us, GenType Type>
+template<Color Us, GenType GenT>
 EMove* generate(const Position& pos, EMove *list) {
 
     constexpr Color Them      = !Us;
@@ -87,7 +89,7 @@ EMove* generate(const Position& pos, EMove *list) {
     Bitboard        checkmask = pos.checkers<Us>();
 
     if (more_than_one(checkmask))
-        return Type == ALL
+        return GenT == ALL
             ? make_moves(list, ksq, king_attacks(ksq) & ~(pos.threats<Us>() | pos.bb(Us)))
             : make_moves(list, ksq, king_attacks(ksq) & pos.bb(Them) & ~pos.threats<Us>());
 
@@ -110,9 +112,9 @@ EMove* generate(const Position& pos, EMove *list) {
     constexpr Bitboard  Rank7   = Us == WHITE ? RANK_7BB   : RANK_2BB;
 
     if (Bitboard promotable = pos.bb(Us, PAWN) & Rank7) {
-        list = make_pawn_moves<PROMOTION, UpRight>(list, shift<UpRight>(promotable & (~pinned | anti_diag(ksq))) & pos.bb(Them) & checkmask);
-        list = make_pawn_moves<PROMOTION, UpLeft >(list, shift<UpLeft >(promotable & (~pinned | main_diag(ksq))) & pos.bb(Them) & checkmask);
-        list = make_pawn_moves<PROMOTION, Up     >(list, shift<Up     >(promotable &  ~pinned                  ) & ~occupied    & checkmask);
+        list = make_pawn_moves<PROMOTION, UpRight, GenT>(list, shift<UpRight>(promotable & (~pinned | anti_diag(ksq))) & pos.bb(Them) & checkmask);
+        list = make_pawn_moves<PROMOTION, UpLeft,  GenT>(list, shift<UpLeft >(promotable & (~pinned | main_diag(ksq))) & pos.bb(Them) & checkmask);
+        list = make_pawn_moves<PROMOTION, Up,      GenT>(list, shift<Up     >(promotable &  ~pinned                  ) & ~occupied    & checkmask);
     }
 
     const Bitboard pawns = pos.bb(Us, PAWN) & ~Rank7;
@@ -120,29 +122,25 @@ EMove* generate(const Position& pos, EMove *list) {
     list = make_pawn_moves<NORMAL, UpRight>(list, shift<UpRight>(pawns & (~pinned | anti_diag(ksq))) & pos.bb(Them) & checkmask);
     list = make_pawn_moves<NORMAL, UpLeft >(list, shift<UpLeft >(pawns & (~pinned | main_diag(ksq))) & pos.bb(Them) & checkmask);
 
-    if constexpr (Type == ALL) {
+    if constexpr (GenT == ALL) {
+
         Bitboard push  = shift<Up>(pawns & (~pinned | file_bb(ksq))) & ~occupied;
         Bitboard push2 = shift<Up>(push & Rank3) & ~occupied;
         list = make_pawn_moves<NORMAL, Up  >(list, push  & checkmask);
         list = make_pawn_moves<NORMAL, Up*2>(list, push2 & checkmask);
-    }
-
-    if constexpr (Type == ALL) {
-        if (Bitboard b = shift<UpRight>(pos.bb(Us, PAWN)) & pos.ep_bb() & Rank6) {
-            *list = make_move<ENPASSANT>(pos.ep_sq() - UpRight, pos.ep_sq());
-            Bitboard after_ep = occupied ^ (b | shift_unsafe<-UpRight>(b) | shift_unsafe<-Up>(b));
-            list += !(bishop_attacks(ksq, after_ep) & opponent_bq | rook_attacks(ksq, after_ep) & opponent_rq);
-        }
-
-        if (Bitboard b = shift<UpLeft >(pos.bb(Us, PAWN)) & pos.ep_bb() & Rank6) {
-            *list = make_move<ENPASSANT>(pos.ep_sq() - UpLeft, pos.ep_sq());
-            Bitboard after_ep = occupied ^ (b | shift_unsafe<-UpLeft>(b) | shift_unsafe<-Up>(b));
-            list += !(bishop_attacks(ksq, after_ep) & opponent_bq | rook_attacks(ksq, after_ep) & opponent_rq);
+        
+        if (Square ep = pos.ep_sq(); ep) {
+            for (Bitboard bb = pawn_attacks<Them>(ep) & pawns; bb; clear_lsb(bb)) {
+                Square   from     = bsf(bb);
+                Bitboard after_ep = occupied ^ square_bb(from, ep - Up, ep);
+                if (!(bishop_attacks(ksq, after_ep) & opponent_bq | rook_attacks(ksq, after_ep) & opponent_rq))
+                    *list++ = make_move<ENPASSANT>(from, ep);
+            }
         }
     }
 
     const Bitboard target = checkmask & (
-        Type == CAPTURES ? pos.bb(Them) : ~pos.bb(Us)
+        GenT == CAPTURES ? pos.bb(Them) : ~pos.bb(Us)
     );
 
     for (Bitboard b = pos.bb(Us, KNIGHT) & ~pinned; b; clear_lsb(b)) {
@@ -173,7 +171,7 @@ EMove* generate(const Position& pos, EMove *list) {
         list = make_moves(list, from, rook_attacks(from, occupied) & target & align_mask(ksq, from));
     }
 
-    if constexpr (Type == CAPTURES)
+    if constexpr (GenT == CAPTURES)
         return make_moves(list, ksq, king_attacks(ksq) & pos.bb(Them) & ~pos.threats<Us>());
 
     list = make_moves(list, ksq, king_attacks(ksq) & ~(pos.threats<Us>() | pos.bb(Us)));

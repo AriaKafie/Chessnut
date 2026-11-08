@@ -9,7 +9,7 @@
 
 #include "debug.h"
 #include "evaluation.h"
-#include "movelist.h"
+#include "movegen.h"
 #include "position.h"
 #include "transpositiontable.h"
 #include "uci.h"
@@ -60,8 +60,8 @@ int reduction(bool i, int depth, int mn, int delta) {
 }
 
 template<Color SideToMove>
-int qsearch(Position& pos, int alpha, int beta)
-{
+int qsearch(Position& pos, int alpha, int beta) {
+
     status.nodes++;
 
     int eval = static_eval<SideToMove>(pos);
@@ -74,15 +74,13 @@ int qsearch(Position& pos, int alpha, int beta)
     if (int lookup = TranspositionTable::lookup(pos.key(), 0, alpha, beta, 0); lookup != NO_EVAL)
         return lookup;
 
-    MoveList<SideToMove, CAPTURES> captures(pos);
+    MoveList<SideToMove, CAPTURES> captures(pos, NULLMOVE, nullptr);
 
     if (captures.size() == 0)
         return eval;
 
-    captures.sort();
+    for (Move move; move = captures.next_move();) {
 
-    for (Move move : captures)
-    {
         pos.do_move<SideToMove>(move);
         eval = -qsearch<!SideToMove>(pos, -beta, -alpha);
         pos.undo_move<SideToMove>(move);

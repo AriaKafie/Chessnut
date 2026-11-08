@@ -3,7 +3,7 @@
 #include <limits.h>
 
 #include "evaluation.h"
-#include "movelist.h"
+#include "movegen.h"
 #include "position.h"
 
 constexpr Score BAD_QUIET_MIN      = (UINT16_MAX / 4) * 0;
@@ -32,13 +32,13 @@ void insertion_sort(EMove* begin, EMove* end) {
     }
 }
 
-template<Color Us, GenType Type>
-void MoveList<Us, Type>::sort() {
+template<Color Us, GenType GenT>
+void MoveList<Us, GenT>::sort() {
 
     Bitboard seen_by_pawn = pawn_attacks<!Us>(pos.bb(!Us, PAWN));
 
     for (EMove& m : *this) {
-        if constexpr (Type == ALL) {
+        if constexpr (GenT == ALL) {
 
             if (m == ttmove) {
                 set_score(m, MAX_SCORE);
@@ -51,10 +51,10 @@ void MoveList<Us, Type>::sort() {
             Square    to         = to_sq(m);
             PieceType pt         = pos.piece_type_on(from);
             PieceType captured   = pos.piece_type_on(to);
-            bool      promo      = type_of(m) == PROMOTION;
+            PieceType promo      = promotion_type_of(m) * is_promotion(m);
             bool      threatened = square_bb(to) & pos.threats<Us>();
 
-            if (captured)
+            if (captured || promo == QUEEN)
             {
                 int material_delta = piece_weight(captured) - piece_weight(pt);
 
@@ -75,27 +75,27 @@ void MoveList<Us, Type>::sort() {
                     : (psq_score<Us>(pt, to) - psq_score<Us>(pt, from)) / 2;
             }
 
-            if (promo)
-                score += promotion_type_of(m);
+            score += promo;
 
             if (square_bb(to) & seen_by_pawn)
                 score -= SEEN_BY_PAWN_MALUS;
 
             set_score(m, score);
 
-        } else if constexpr (Type == CAPTURES) {
+        } else if constexpr (GenT == CAPTURES) {
 
             Score score = UINT16_MAX / 2;
 
-            Square    from     = from_sq(m);
-            Square    to       = to_sq(m);
-            PieceType pt       = pos.piece_type_on(from);
-            PieceType captured = pos.piece_type_on(to);
+            Square    from       = from_sq(m);
+            Square    to         = to_sq(m);
+            PieceType pt         = pos.piece_type_on(from);
+            PieceType captured   = pos.piece_type_on(to);
+            bool      threatened = square_bb(to) & pos.threats<Us>();
 
             if (square_bb(to) & seen_by_pawn)
                 score -= 500;
 
-            score += piece_weight(captured) - piece_weight(pt) * bool(square_bb(to) & pos.threats<Us>());
+            score += piece_weight(captured) - piece_weight(pt) * threatened;
 
             set_score(m, score);
         }
