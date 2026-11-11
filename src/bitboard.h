@@ -70,7 +70,7 @@ inline int KingShieldScores[COLOR_NB][SQUARE_NB][1 << 6];
 inline KMagic KMagics[COLOR_NB][SQUARE_NB];
 inline Magic Magics[SQUARE_NB][2];
 
-std::string to_string(Bitboard b);
+std::string bbtos(Bitboard b);
 
 namespace Bitboards { void init(); }
 

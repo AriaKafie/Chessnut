@@ -50,7 +50,8 @@ void MoveList<Us, GenT>::sort() {
             Square    from       = from_sq(m);
             Square    to         = to_sq(m);
             PieceType pt         = pos.piece_type_on(from);
-            PieceType captured   = pos.piece_type_on(to);
+            bool      ep         = type_of(m) == ENPASSANT;
+            PieceType captured   = ep ? PAWN : pos.piece_type_on(to);
             PieceType promo      = promotion_type_of(m) * is_promotion(m);
             bool      threatened = square_bb(to) & pos.threats<Us>();
 

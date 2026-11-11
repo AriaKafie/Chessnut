@@ -71,8 +71,30 @@ void Position::set(const std::string& fen) {
         if (size_t rights = std::string("qkQK").find(c); rights != std::string::npos)
             state_ptr->castling_rights |= 1 << rights;
 
-    if (enpassant != "-")
-        state_ptr->ep_sq = uci_to_square(enpassant);
+    if (enpassant != "-") {
+
+        Color    us     = state_ptr->side_to_move;
+        Color    them   = !us;
+        Square   ep     = uci_to_square(enpassant);
+        Square   cap_sq = ep + relative_direction(us, SOUTH);
+        Square   ksq    = bsf(bb(us, KING));
+        Bitboard pawns  = PawnAttacks[them][ep] & bb(us, PAWN);
+        Bitboard bq     = bb(them, BISHOP) | bb(them, QUEEN);
+        Bitboard rq     = bb(them, ROOK) | bb(them, QUEEN);
+
+        bool pseudo_legal = pawns;
+        bool legal = false;
+
+        for (;!legal && pawns; clear_lsb(pawns)) {
+            Bitboard occupied = occupied_bb() ^ square_bb(bsf(pawns), cap_sq, ep);
+            legal = !(
+                (bishop_attacks(ksq, occupied) & bq) | (rook_attacks(ksq, occupied) & rq)
+            );
+        }
+
+        if (pseudo_legal && legal)
+            state_ptr->ep_sq = ep;
+    }
 
     for (Square sq = H1; sq <= A8; sq++)
         state_ptr->key ^= Zobrist::hash[piece_on(sq)][sq];
@@ -85,7 +107,6 @@ void Position::set(const std::string& fen) {
 
     white_to_move() ? update_threats<WHITE>()
                     : update_threats<BLACK>();
-
     rt_clear();
     rt_push();
 

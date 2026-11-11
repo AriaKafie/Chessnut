@@ -4,7 +4,6 @@
 
 #include <cstring>
 #include <string>
-#include <vector>
 
 #include "bitboard.h"
 #include "types.h"
@@ -75,6 +74,8 @@ public:
     template<Color Us>
     Bitboard  threats() const;
     bool      is_repetition() const;
+    template<Color Us>
+    Bitboard  pinned() const;
     template<Color C>
     Square    king_sq() const;
 
@@ -181,6 +182,23 @@ inline bool Position::is_quiet(Move m) const {
 }
 
 template<Color Us>
+Bitboard Position::pinned() const {
+
+    Square ksq = king_sq<Us>();
+
+    const Bitboard opponent_bq = bb(!Us, BISHOP) | bb(!Us, QUEEN);
+    const Bitboard opponent_rq = bb(!Us, ROOK) | bb(!Us, QUEEN);
+    const Bitboard occupied    = occupied_bb();
+
+    Bitboard pinned_bb = 0;
+
+    for (Bitboard pinners = bishop_xray(ksq, occupied) & opponent_bq | rook_xray(ksq, occupied) & opponent_rq; pinners; clear_lsb(pinners))
+        pinned_bb |= between_bb(ksq, bsf(pinners));
+
+    return pinned_bb;
+}
+
+template<Color Us>
 Bitboard Position::threats() const {
     if (!state_ptr->threats_bb)
         update_threats<Us>();
@@ -191,7 +209,7 @@ template<Color Us>
 void Position::update_threats() const {
 
     constexpr Color Them     = !Us;
-    Bitboard        occupied = occupied_bb() ^ bb(Us, KING);
+    const Bitboard  occupied = occupied_bb() ^ bb(Us, KING);
     Bitboard&       thr      = state_ptr->threats_bb;
 
     thr = pawn_attacks<Them>(bb(Them, PAWN));
@@ -250,10 +268,10 @@ void Position::do_move(Move m)
 
     constexpr Direction Up = relative_direction(Us, NORTH);
 
-    Square from    = from_sq(m);
-    Square to      = to_sq(m);
-    Piece  pc      = piece_on(from);
-    Piece  capture = piece_on(to);
+    const Square from    = from_sq(m);
+    const Square to      = to_sq(m);
+    const Piece  pc      = piece_on(from);
+    const Piece  capture = piece_on(to);
 
     memcpy(state_ptr + 1, state_ptr, offsetof(StateInfo, threats_bb));
     state_ptr++;
@@ -263,13 +281,26 @@ void Position::do_move(Move m)
     state_ptr->key ^= Zobrist::enpassant[state_ptr->ep_sq];
     state_ptr->ep_sq = 0;
 
-    if (Square ep = from + Up;
+    if (Bitboard pawns;
         pc == Pawn
         && (to - from) == Up*2
-        && (pawn_attacks<Us>(ep) & bb(Them, PAWN))) {
+        && (pawns = PawnAttacks[Us][from + Up] & bb(Them, PAWN))) {
+
+        const Square   ksq      = king_sq<Them>();
+        const Square   ep       = from + Up;
+        const Bitboard occupied = occupied_bb() ^ square_bb(from, ep) ^ pawns;
+        const Bitboard bq       = bb(Us, BISHOP) | bb(Us, QUEEN);
+        const Bitboard rq       = bb(Us, ROOK) | bb(Us, QUEEN);
+        const Bitboard checks   =
+            (bishop_attacks(ksq, occupied) & bq) |
+            (rook_attacks(ksq, occupied) & rq);
         
-        state_ptr->ep_sq = ep;
-        state_ptr->key ^= Zobrist::enpassant[ep];
+        bool discovery = checks & align_mask(ksq, from);
+
+        if (!discovery && popcount(pawns) > popcount(checks)) {
+            state_ptr->ep_sq = ep;
+            state_ptr->key ^= Zobrist::enpassant[ep];
+        }
     }
 
     state_ptr->threats_bb = 0;

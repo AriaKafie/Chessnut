@@ -306,7 +306,7 @@ void Bitboards::init()
         }
 }
 
-std::string to_string(Bitboard bb)
+std::string bbtos(Bitboard bb)
 {
     std::ostringstream os;
     std::string l = "+---+---+---+---+---+---+---+---+";
