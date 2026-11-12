@@ -46,7 +46,7 @@ public:
 
     void set(const std::string& fen);
     std::string fen() const;
-    std::string to_string() const;
+    std::string to_string(bool rt = false) const;
 
     Bitboard  bb(Piece pc) const;
     Bitboard  bb(Color c, PieceType pt) const;

@@ -113,7 +113,7 @@ void Position::set(const std::string& fen) {
     set_gamephase();
 }
 
-std::string Position::to_string() const {
+std::string Position::to_string(bool rt) const {
 
     std::ostringstream os;
 
@@ -130,11 +130,14 @@ std::string Position::to_string() const {
     os << "\n+---+---+---+---+---+---+---+---+\n"
        << "  a   b   c   d   e   f   g   h\n\n"
        << "Fen: " << fen() << "\n"
-       << "Key: " << std::setw(16) << std::setfill('0') << std::hex << std::uppercase << key() << "\n\n";
+       << "Key: " << std::setw(16) << std::setfill('0') << std::hex << std::uppercase << key() << "\n";
+
+    if (!rt)
+        return os.str();
 
     std::string s = "+------------------+------+----+\n";
 
-    os << s << "| key              | loc  |  # |\n" << s;
+    os << "\n" << s << "| key              | loc  |  # |\n" << s;
 
     for (int i = 0; i < RT_SIZE; i++)
         if (RTEntry& ri = repetition_table[i]; ri.occurrences)

@@ -1,6 +1,6 @@
 
-#ifndef MOVELIST_H
-#define MOVELIST_H
+#ifndef MOVEGEN_H
+#define MOVEGEN_H
 
 #include <algorithm>
 
