@@ -36,7 +36,8 @@ EMove* make_castling(EMove* list, const Position& pos, Bitboard occupied) {
                     if (q_rights && (violations & 0b111100) == 0)
                         *p++ = q_castle;
 
-                    table[c][rights][violations] = uint64_t(res[0]) | (uint64_t(res[1]) << 32);
+                    table[c][rights][violations] = static_cast<uint64_t>(res[0])
+                                                 | static_cast<uint64_t>(res[1]) << 32;
                 }
             }
         }

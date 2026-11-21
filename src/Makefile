@@ -5,8 +5,8 @@ FLAGS = -fpermissive -std=c++17 -march=native -w -O3 -c
 
 OBJS = bitboard.o debug.o main.o movegen.o moveordering.o position.o search.o transpositiontable.o uci.o
 
-Chessnut: $(OBJS)
-	g++ $(OBJS) -o Chessnut
+chessnut: $(OBJS)
+	g++ $(OBJS) -o chessnut
 
 bitboard.o: bitboard.cpp $(HEADERS)
 	g++ $(FLAGS) bitboard.cpp
@@ -36,7 +36,7 @@ uci.o: uci.cpp $(HEADERS)
 	g++ $(FLAGS) uci.cpp
 
 clean:
-	rm -rf *.o *~ Chessnut
+	rm -rf *.o *~ chessnut
 
 debug:
 	g++ -fpermissive -std=c++17 -march=native -w -g -odebug *.cpp
