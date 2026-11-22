@@ -253,27 +253,22 @@ void Position::set_gamephase() {
 
     Color us = state_ptr->side_to_move, them = !us;
 
-#define piece_count(pc) popcount(bitboards[pc])
-
-    int friendly_material = 3 * piece_count(make_piece(us, KNIGHT)) +
-                            3 * piece_count(make_piece(us, BISHOP)) +
-                            5 * piece_count(make_piece(us, ROOK))   +
-                            9 * piece_count(make_piece(us, QUEEN));
+#define piece_count(c, pc) popcount(bb(c, pc))
+    int friendly = 3 * piece_count(us, KNIGHT) +
+                   3 * piece_count(us, BISHOP) +
+                   5 * piece_count(us, ROOK)   +
+                   9 * piece_count(us, QUEEN);
         
-    int enemy_material    = 3 * piece_count(make_piece(them, KNIGHT)) +
-                            3 * piece_count(make_piece(them, BISHOP)) +
-                            5 * piece_count(make_piece(them, ROOK))   +
-                            9 * piece_count(make_piece(them, QUEEN));
-
-    bool pawns = bitboards[W_PAWN] || bitboards[B_PAWN];
-
-    if (!pawns && (enemy_material < 5 && friendly_material >= 5 || friendly_material < 5 && enemy_material >= 5))
-        state_ptr->gamephase = MOPUP;
-    else if (friendly_material < 10 || friendly_material < 17 && !bitboards[make_piece(us, QUEEN)])
-        state_ptr->gamephase = ENDGAME;
-    else
-        state_ptr->gamephase = MIDGAME;
-        
+    int opponent = 3 * piece_count(them, KNIGHT) +
+                   3 * piece_count(them, BISHOP) +
+                   5 * piece_count(them, ROOK)   +
+                   9 * piece_count(them, QUEEN);
 #undef piece_count
+
+    bool pawns   = bitboards[W_PAWN] || bitboards[B_PAWN];
+    bool mopup   = !pawns && (opponent < 5 && friendly >= 5 || friendly < 5 && opponent >= 5);
+    bool endgame = friendly < 10 || friendly < 17 && !bitboards[make_piece(us, QUEEN)];
+
+    state_ptr->gamephase = mopup ? MOPUP : endgame ? ENDGAME : MIDGAME;
 }
 

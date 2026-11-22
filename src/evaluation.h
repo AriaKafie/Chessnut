@@ -118,54 +118,52 @@ int psq_score(PieceType pt, Square sq) {
 template<Color Us>
 int material_count(const Position& pos) {
     return
-        100 * (popcount(pos.bb(make_piece(Us, PAWN  ))) - popcount(pos.bb(make_piece(!Us, PAWN  )))) +
-        300 * (popcount(pos.bb(make_piece(Us, KNIGHT))) - popcount(pos.bb(make_piece(!Us, KNIGHT)))) +
-        300 * (popcount(pos.bb(make_piece(Us, BISHOP))) - popcount(pos.bb(make_piece(!Us, BISHOP)))) +
-        500 * (popcount(pos.bb(make_piece(Us, ROOK  ))) - popcount(pos.bb(make_piece(!Us, ROOK  )))) +
-        900 * (popcount(pos.bb(make_piece(Us, QUEEN ))) - popcount(pos.bb(make_piece(!Us, QUEEN ))));
+        100 * (popcount(pos.bb(Us, PAWN  )) - popcount(pos.bb(!Us, PAWN  ))) +
+        300 * (popcount(pos.bb(Us, KNIGHT)) - popcount(pos.bb(!Us, KNIGHT))) +
+        300 * (popcount(pos.bb(Us, BISHOP)) - popcount(pos.bb(!Us, BISHOP))) +
+        500 * (popcount(pos.bb(Us, ROOK  )) - popcount(pos.bb(!Us, ROOK  ))) +
+        900 * (popcount(pos.bb(Us, QUEEN )) - popcount(pos.bb(!Us, QUEEN )));
 }
 
 template<Color Us, Color Them = !Us>
-int midgame(const Position& pos)
+int evaluate(const Position& pos)
 {
-    int score = material_count<Us>(pos);
+    int material = material_count<Us>(pos);
+    int midgame;
+    int endgame;
 
-    Bitboard friendly_pawn = pos.bb(make_piece(Us, PAWN));
-    Bitboard opponent_pawn = pos.bb(make_piece(Them, PAWN));
+    midgame = material;
 
-    score += king_safety<Us  >(pos.king_sq<Us  >(), friendly_pawn)
-           - king_safety<Them>(pos.king_sq<Them>(), opponent_pawn);
+    Bitboard friendly_pawn = pos.bb(Us, PAWN);
+    Bitboard opponent_pawn = pos.bb(Them, PAWN);
+
+    midgame += king_safety<Us  >(pos.king_sq<Us  >(), friendly_pawn)
+             - king_safety<Them>(pos.king_sq<Them>(), opponent_pawn);
 
     constexpr Bitboard Rank567 = relative_rank(Us, RANK_5, RANK_6, RANK_7);
     constexpr Bitboard Rank234 = relative_rank(Us, RANK_2, RANK_3, RANK_4);
 
-    score += 4 * (popcount(friendly_pawn & Rank567) - popcount(opponent_pawn & Rank234));
+    midgame += 4 * (popcount(friendly_pawn & Rank567) - popcount(opponent_pawn & Rank234));
 
-    for (PieceType pt : { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING })
-    {
-        for (Bitboard b = pos.bb(make_piece(Us, pt)); b; clear_lsb(b))
-            score += psq_score<Us>(pt, bsf(b));
+    for (PieceType pt : { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING }) {
 
-        for (Bitboard b = pos.bb(make_piece(Them, pt)); b; clear_lsb(b))
-            score -= psq_score<Them>(pt, bsf(b));
+        for (Bitboard bb = pos.bb(Us, pt); bb; clear_lsb(bb))
+            midgame += psq_score<Us>(pt, bsf(bb));
+
+        for (Bitboard bb = pos.bb(Them, pt); bb; clear_lsb(bb))
+            midgame -= psq_score<Them>(pt, bsf(bb));
     }
 
     Bitboard friendly_passers = passers<Us  >(friendly_pawn, opponent_pawn);
     Bitboard opponent_passers = passers<Them>(opponent_pawn, friendly_pawn);
 
-    score += 8  * (popcount(friendly_passers & Rank234) - popcount(opponent_passers & Rank567));
-    score += 16 * (popcount(friendly_passers & Rank567) - popcount(opponent_passers & Rank234));
+    midgame += 8  * (popcount(friendly_passers & Rank234) - popcount(opponent_passers & Rank567));
+    midgame += 16 * (popcount(friendly_passers & Rank567) - popcount(opponent_passers & Rank234));
 
-    return score;
-}
+    endgame = material;
 
-template<Color Us, Color Them = !Us>
-int endgame(const Position& pos)
-{
-    int score = material_count<Us>(pos);
-
-    score += psq_score<Us  >(0, pos.king_sq<Us  >());
-    score -= psq_score<Them>(0, pos.king_sq<Them>());
+    endgame += psq_score<Us  >(0, pos.king_sq<Us  >());
+    endgame -= psq_score<Them>(0, pos.king_sq<Them>());
 
     constexpr Bitboard Rank2 = relative_rank(Us, RANK_2);
     constexpr Bitboard Rank3 = relative_rank(Us, RANK_3);
@@ -173,30 +171,35 @@ int endgame(const Position& pos)
     constexpr Bitboard Rank5 = relative_rank(Us, RANK_5);
     constexpr Bitboard Rank6 = relative_rank(Us, RANK_6);
     constexpr Bitboard Rank7 = relative_rank(Us, RANK_7);
-    
-    Bitboard friendly_pawn = pos.bb(make_piece(Us,   PAWN));
-    Bitboard opponent_pawn = pos.bb(make_piece(Them, PAWN));
 
-    score += 10 * popcount(friendly_pawn & Rank4);
-    score += 20 * popcount(friendly_pawn & Rank5);
-    score += 50 * popcount(friendly_pawn & Rank6);
-    score += 90 * popcount(friendly_pawn & Rank7);
+    endgame += 10 * popcount(friendly_pawn & Rank4);
+    endgame += 20 * popcount(friendly_pawn & Rank5);
+    endgame += 50 * popcount(friendly_pawn & Rank6);
+    endgame += 90 * popcount(friendly_pawn & Rank7);
 
-    score -= 10 * popcount(opponent_pawn & Rank5);
-    score -= 20 * popcount(opponent_pawn & Rank4);
-    score -= 50 * popcount(opponent_pawn & Rank3);
-    score -= 90 * popcount(opponent_pawn & Rank2);
+    endgame -= 10 * popcount(opponent_pawn & Rank5);
+    endgame -= 20 * popcount(opponent_pawn & Rank4);
+    endgame -= 50 * popcount(opponent_pawn & Rank3);
+    endgame -= 90 * popcount(opponent_pawn & Rank2);
 
-    Bitboard friendly_passers = passers<Us  >(friendly_pawn, opponent_pawn);
-    Bitboard opponent_passers = passers<Them>(opponent_pawn, friendly_pawn);
+    endgame += 16 * (popcount(friendly_passers & Rank234) - popcount(opponent_passers & Rank567));
+    endgame += 32 * (popcount(friendly_passers & Rank567) - popcount(opponent_passers & Rank234));
 
-    constexpr Bitboard Rank234 = Rank2 | Rank3 | Rank4;
-    constexpr Bitboard Rank567 = Rank5 | Rank6 | Rank7;
+    constexpr int KnightPhase = 1;
+    constexpr int BishopPhase = 1;
+    constexpr int RookPhase   = 2;
+    constexpr int QueenPhase  = 4;
+    constexpr int TotalPhase  = KnightPhase*4 + BishopPhase*4 + RookPhase*4 + QueenPhase*2;
 
-    score += 16 * (popcount(friendly_passers & Rank234) - popcount(opponent_passers & Rank567));
-    score += 32 * (popcount(friendly_passers & Rank567) - popcount(opponent_passers & Rank234));
+#define piece_count(pt) popcount(pos.bb(WHITE, pt) | pos.bb(BLACK, pt))
+    int phase = TotalPhase - piece_count(KNIGHT)*KnightPhase
+                           - piece_count(BISHOP)*BishopPhase
+                           - piece_count(ROOK  )*RookPhase
+                           - piece_count(QUEEN )*QueenPhase;
+#undef piece_count
+    phase = (phase * 256 + (TotalPhase / 2)) / TotalPhase;
 
-    return score;
+    return ((midgame * (256 - phase)) + (endgame * phase)) / 256;
 }
 
 template<Color Us, Color Them = !Us>
@@ -214,11 +217,7 @@ int mopup(const Position& pos) {
 
 template<Color Perspective>
 int static_eval(const Position& pos) {
-    return pos.midgame()
-        ? midgame<Perspective>(pos)
-        : pos.endgame()
-            ? endgame<Perspective>(pos)
-            : mopup<Perspective>(pos);
+    return pos.mopup() ? mopup<Perspective>(pos) : evaluate<Perspective>(pos);
 }
 
 #endif

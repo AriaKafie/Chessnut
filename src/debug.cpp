@@ -196,10 +196,7 @@ void load_tt(std::istringstream& args) {
 }
 
 static void go() {
-    std::cout << "EP in Qsearch & before push: 290739083" << std::endl;
-    std::cout << "EP=good_capture_base:        289080761" << std::endl;
-    std::cout << "Validate ep in Position::set,"          << std::endl
-              << "O(1) ep verify in do_move:   289080761" << std::endl;
+    std::cout << "Tapered eval: 351697127" << std::endl;
 }
 
 void Debug::go() {::go();}
