@@ -196,7 +196,7 @@ void load_tt(std::istringstream& args) {
 }
 
 static void go() {
-    std::cout << "Tapered eval: 351697127" << std::endl;
+    std::cout << "psq in endgame: 353573023" << std::endl;
 }
 
 void Debug::go() {::go();}

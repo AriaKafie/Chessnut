@@ -9,7 +9,16 @@ inline int psq[COLOR_NB][KING + 1][SQUARE_NB];
 
 inline void eval_init() {
     int psq_base[KING + 1][SQUARE_NB] = {
-        /*endgame king*/ {
+        /*ENDGAME_PAWN*/ {
+            0,   0,  0,  0,  0,  0,  0,  0,
+            90, 90, 90, 90, 90, 90, 90, 90,
+            50, 50, 50, 50, 50, 50, 50, 50,
+            20, 20, 20, 20, 20, 20, 20, 20,
+            10, 10, 10, 10, 10, 10, 10, 10,
+            0,   0,  0,  0,  0,  0,  0,  0,
+            0,   0,  0,  0,  0,  0,  0,  0,
+            0,   0,  0,  0,  0,  0,  0,  0
+        }, /*ENDGAME_KING*/ {
             -50,-40,-30,-20,-20,-30,-40,-50,
             -30,-20,-10,  0,  0,-10,-20,-30,
             -30,-10, 20, 30, 30, 20,-10,-30,
@@ -18,7 +27,7 @@ inline void eval_init() {
             -30,-10, 20, 30, 30, 20,-10,-30,
             -30,-30,  0,  0,  0,  0,-30,-30,
             -50,-30,-30,-30,-30,-30,-30,-50
-        }, {}, /*pawn*/ {
+        }, /*PAWN*/ {
             50, 50, 50, 50, 50, 50, 50, 50,
             50, 50, 50, 50, 50, 50, 50, 50,
             10, 10, 20, 30, 30, 20, 10, 10,
@@ -27,7 +36,7 @@ inline void eval_init() {
             5,  -5,-10,  0,  0,-10, -5,  5,
             5,  10, 10,-20,-20, 10, 10,  5,
             0,   0,  0,  0,  0,  0,  0,  0
-        }, /*knight*/ {
+        }, /*KNIGHT*/ {
             -50,-40,-30,-30,-30,-30,-40,-50,
             -40,-20,  0,  0,  0,  0,-20,-40,
             -30,  0, 10, 15, 15, 10,  0,-30,
@@ -36,7 +45,7 @@ inline void eval_init() {
             -30,  5, 10, 15, 15, 10,  5,-30,
             -40,-20,  0,  5,  5,  0,-20,-40,
             -50,-40,-30,-30,-30,-30,-40,-50,
-        }, /*bishop*/ {
+        }, /*BISHOP*/ {
             -20,-10,-10,-10,-10,-10,-10,-20,
             -10,  0,  0,  0,  0,  0,  0,-10,
             -10,  0,  5, 10, 10,  5,  0,-10,
@@ -45,7 +54,7 @@ inline void eval_init() {
             -10, 10, 10, 10, 10, 10, 10,-10,
             -10,  5,  0,  0,  0,  0,  5,-10,
             -20,-10,-10,-10,-10,-10,-10,-20,
-        }, /*rook*/ {
+        }, /*ROOK*/ {
              0,  0,  0,  0,  0,  0,  0,  0,
              5, 10, 10, 10, 10, 10, 10,  5,
             -5,  0,  0,  0,  0,  0,  0, -5,
@@ -54,7 +63,7 @@ inline void eval_init() {
             -5,  0,  0,  0,  0,  0,  0, -5,
             -5,  0,  0,  0,  0,  0,  0, -5,
             -5,  0,  0,  5,  5,  0,  0, -5
-        }, /*queen*/ {
+        }, /*QUEEN*/ {
             -20,-10,-10, -5, -5,-10,-10,-20,
             -10,  0,  0,  0,  0,  0,  0,-10,
             -10,  0,  5,  5,  5,  5,  0,-10,
@@ -63,7 +72,7 @@ inline void eval_init() {
             -10,  5,  5,  5,  5,  5,  0,-10,
             -10,  0,  5,  0,  0,  0,  0,-10,
             -20,-10,-10, -5, -5,-10,-10,-20
-        }, /*king*/ {
+        }, /*KING*/ {
             -30,-40,-40,-50,-50,-40,-40,-30,
             -30,-40,-40,-50,-50,-40,-40,-30,
             -30,-40,-40,-50,-50,-40,-40,-30,
@@ -76,7 +85,7 @@ inline void eval_init() {
     };
 
     for (Color c : { WHITE, BLACK }) {
-        for (PieceType pt : { NO_PIECE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING }) {
+        for (PieceType pt : { ENDGAME_PAWN, ENDGAME_KING, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING }) {
 
             Square sq = A8;
 
@@ -129,61 +138,72 @@ template<Color Us, Color Them = !Us>
 int evaluate(const Position& pos)
 {
     int material = material_count<Us>(pos);
-    int midgame;
-    int endgame;
-
-    midgame = material;
 
     Bitboard friendly_pawn = pos.bb(Us, PAWN);
     Bitboard opponent_pawn = pos.bb(Them, PAWN);
 
-    midgame += king_safety<Us  >(pos.king_sq<Us  >(), friendly_pawn)
-             - king_safety<Them>(pos.king_sq<Them>(), opponent_pawn);
+    int k_safety = king_safety<Us  >(pos.king_sq<Us  >(), friendly_pawn)
+                 - king_safety<Them>(pos.king_sq<Them>(), opponent_pawn);
 
     constexpr Bitboard Rank567 = relative_rank(Us, RANK_5, RANK_6, RANK_7);
     constexpr Bitboard Rank234 = relative_rank(Us, RANK_2, RANK_3, RANK_4);
 
-    midgame += 4 * (popcount(friendly_pawn & Rank567) - popcount(opponent_pawn & Rank234));
+    int pawns567 = popcount(friendly_pawn & Rank567) - popcount(opponent_pawn & Rank234);
 
-    for (PieceType pt : { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING }) {
+    int midgame_pawn_psq = 0;
+
+    for (Bitboard bb = friendly_pawn; bb; clear_lsb(bb))
+        midgame_pawn_psq += psq_score<Us>(PAWN, bsf(bb));
+
+    for (Bitboard bb = opponent_pawn; bb; clear_lsb(bb))
+        midgame_pawn_psq -= psq_score<Them>(PAWN, bsf(bb));
+
+    int nbrq_psq = 0;
+
+    for (PieceType pt : { KNIGHT, BISHOP, ROOK, QUEEN }) {
 
         for (Bitboard bb = pos.bb(Us, pt); bb; clear_lsb(bb))
-            midgame += psq_score<Us>(pt, bsf(bb));
+            nbrq_psq += psq_score<Us>(pt, bsf(bb));
 
         for (Bitboard bb = pos.bb(Them, pt); bb; clear_lsb(bb))
-            midgame -= psq_score<Them>(pt, bsf(bb));
+            nbrq_psq -= psq_score<Them>(pt, bsf(bb));
     }
 
-    Bitboard friendly_passers = passers<Us  >(friendly_pawn, opponent_pawn);
-    Bitboard opponent_passers = passers<Them>(opponent_pawn, friendly_pawn);
+    int midgame_king_psq = psq_score<Us  >(KING, pos.king_sq<Us  >())
+                         - psq_score<Them>(KING, pos.king_sq<Them>());
 
-    midgame += 8  * (popcount(friendly_passers & Rank234) - popcount(opponent_passers & Rank567));
-    midgame += 16 * (popcount(friendly_passers & Rank567) - popcount(opponent_passers & Rank234));
+    const Bitboard friendly_passers = passers<Us  >(friendly_pawn, opponent_pawn);
+    const Bitboard opponent_passers = passers<Them>(opponent_pawn, friendly_pawn);
 
-    endgame = material;
+    const int passers234 = popcount(friendly_passers & Rank234) - popcount(opponent_passers & Rank567);
+    const int passers567 = popcount(friendly_passers & Rank567) - popcount(opponent_passers & Rank234);
 
-    endgame += psq_score<Us  >(0, pos.king_sq<Us  >());
-    endgame -= psq_score<Them>(0, pos.king_sq<Them>());
+    int endgame_pawn_psq = 0;
 
-    constexpr Bitboard Rank2 = relative_rank(Us, RANK_2);
-    constexpr Bitboard Rank3 = relative_rank(Us, RANK_3);
-    constexpr Bitboard Rank4 = relative_rank(Us, RANK_4);
-    constexpr Bitboard Rank5 = relative_rank(Us, RANK_5);
-    constexpr Bitboard Rank6 = relative_rank(Us, RANK_6);
-    constexpr Bitboard Rank7 = relative_rank(Us, RANK_7);
+    for (Bitboard bb = friendly_pawn; bb; clear_lsb(bb))
+        endgame_pawn_psq += psq_score<Us>(ENDGAME_PAWN, bsf(bb));
 
-    endgame += 10 * popcount(friendly_pawn & Rank4);
-    endgame += 20 * popcount(friendly_pawn & Rank5);
-    endgame += 50 * popcount(friendly_pawn & Rank6);
-    endgame += 90 * popcount(friendly_pawn & Rank7);
+    for (Bitboard bb = opponent_pawn; bb; clear_lsb(bb))
+        endgame_pawn_psq -= psq_score<Them>(ENDGAME_PAWN, bsf(bb));
 
-    endgame -= 10 * popcount(opponent_pawn & Rank5);
-    endgame -= 20 * popcount(opponent_pawn & Rank4);
-    endgame -= 50 * popcount(opponent_pawn & Rank3);
-    endgame -= 90 * popcount(opponent_pawn & Rank2);
+    int endgame_king_psq = psq_score<Us  >(ENDGAME_KING, pos.king_sq<Us  >())
+                         - psq_score<Them>(ENDGAME_KING, pos.king_sq<Them>());
 
-    endgame += 16 * (popcount(friendly_passers & Rank234) - popcount(opponent_passers & Rank567));
-    endgame += 32 * (popcount(friendly_passers & Rank567) - popcount(opponent_passers & Rank234));
+    int midgame = material
+                + k_safety
+                + 4 * pawns567
+                + midgame_pawn_psq
+                + nbrq_psq
+                + midgame_king_psq
+                + 8  * passers234
+                + 16 * passers567;
+
+    int endgame = material
+                + endgame_pawn_psq
+                + nbrq_psq
+                + endgame_king_psq
+                + 16 * passers234
+                + 32 * passers567;
 
     constexpr int KnightPhase = 1;
     constexpr int BishopPhase = 1;

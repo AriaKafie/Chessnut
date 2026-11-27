@@ -72,7 +72,7 @@ void MoveList<Us, GenT>::sort() {
                     score = BAD_QUIET_BASE;
 
                 score += pos.endgame() && pt == KING
-                    ? (psq_score<Us>(0,  to) - psq_score<Us>(0,  from)) / 2 // (end_king_squares[to] - end_king_squares[from]) / 2
+                    ? (psq_score<Us>(ENDGAME_KING, to) - psq_score<Us>(ENDGAME_KING, from)) / 2
                     : (psq_score<Us>(pt, to) - psq_score<Us>(pt, from)) / 2;
             }
 
